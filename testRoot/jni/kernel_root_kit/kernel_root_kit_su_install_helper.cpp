@@ -78,7 +78,7 @@ std::string install_su(const char* str_root_key, const char* base_path, ssize_t&
 		err = -503;
 		return {};
 	}
-	std::string su_hide_full_path = _su_hide_folder_path + "/" + "su";
+	std::string su_hide_full_path = _su_hide_folder_path + "/su";
 	if(!std::filesystem::exists(su_hide_full_path.c_str())) {
 		if (!write_su_exec(su_hide_full_path.c_str())) {
 			ROOT_PRINTF("copy file error.\n");

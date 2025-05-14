@@ -6,8 +6,7 @@
 #include "kernel_root_kit_lib_root_server_data.h"
 #include "kernel_root_kit_lib_su_env_data.h"
 #include "kernel_root_kit_parasite_patch_elf.h"
-#include "../lib_root_server/lib_root_server_inline_key.h"
-#include "../lib_root_server/lib_root_server_inline_so_name.h"
+#include "../lib_root_server/lib_root_server_inline.h"
 #include "../lib_su_env/lib_su_env_inline.h"
 #include <string.h>
 #include <iostream>
@@ -179,7 +178,7 @@ bool replace_feature_string_in_buf(const char *feature_string_buf, size_t featur
 	return write;
 }
 
-bool write_root_server_so_file(const char* str_root_key, const char* target_path) {
+bool write_root_server_so_file(const char* str_root_key, const char* implant_so_full_path, const char* su_path) {
 	std::shared_ptr<char> sp_lib_root_server_file_data(new (std::nothrow) char[kernel_root::lib_root_server_file_size], std::default_delete<char[]>());
 	if(!sp_lib_root_server_file_data) {
 		return false;
@@ -199,11 +198,17 @@ bool write_root_server_so_file(const char* str_root_key, const char* target_path
 		return false;
 	}
 
+	// write su path
+	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_path), sizeof(static_inline_su_path), su_path, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
+		ROOT_PRINTF("write su base path failed.\n");
+		return false;
+	}
+
 	// write out disk
-    std::string str_target_path = target_path;
-    std::ofstream file(str_target_path, std::ios::binary | std::ios::out);
+    std::string str_implant_so_full_path = implant_so_full_path;
+    std::ofstream file(str_implant_so_full_path, std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-		ROOT_PRINTF("Could not open file %s.\n", str_target_path.c_str());
+		ROOT_PRINTF("Could not open file %s.\n", str_implant_so_full_path.c_str());
         return false;
     }
     file.write(sp_lib_root_server_file_data.get(), 
@@ -212,7 +217,7 @@ bool write_root_server_so_file(const char* str_root_key, const char* target_path
     return true;
 }
 
-bool write_su_env_so_file(const char* str_root_key, const char* target_path, std::string_view su_folder) {
+bool write_su_env_so_file(const char* str_root_key, const char* implant_so_full_path, std::string_view su_folder) {
 	std::shared_ptr<char> sp_lib_su_env_file_data(new (std::nothrow) char[kernel_root::lib_su_env_file_size], std::default_delete<char[]>());
 	if(!sp_lib_su_env_file_data) {
 		return false;
@@ -220,17 +225,17 @@ bool write_su_env_so_file(const char* str_root_key, const char* target_path, std
 	memcpy(sp_lib_su_env_file_data.get(), reinterpret_cast<char*>(kernel_root::lib_su_env_file_data), 
 	kernel_root::lib_su_env_file_size);
 
-	// write su path
-	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_path), sizeof(static_inline_su_path), su_folder.data(), sp_lib_su_env_file_data.get(), kernel_root::lib_su_env_file_size)) {
+	// write su folder
+	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_folder), sizeof(static_inline_su_folder), su_folder.data(), sp_lib_su_env_file_data.get(), kernel_root::lib_su_env_file_size)) {
 		ROOT_PRINTF("write su path failed.\n");
 		return false;
 	}
 
 	// write out disk
-    std::string str_target_path = target_path;
-    std::ofstream file(str_target_path, std::ios::binary | std::ios::out);
+    std::string str_implant_so_full_path = implant_so_full_path;
+    std::ofstream file(str_implant_so_full_path, std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-		ROOT_PRINTF("Could not open file %s.\n", str_target_path.c_str());
+		ROOT_PRINTF("Could not open file %s.\n", str_implant_so_full_path.c_str());
 		return false;
     }
     file.write(sp_lib_su_env_file_data.get(), kernel_root::lib_su_env_file_size);
@@ -289,7 +294,7 @@ ssize_t _internal_parasite_implant_app(const char* str_root_key, const char* tar
 	return 0;
 }
 
-ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path) {
+ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_path) {
 	std::filesystem::path path(original_so_full_path);
 	std::string folder_path = path.parent_path().string();
 	std::string implant_so_full_path = folder_path  + "/" + k_implant_root_server_so_name;
@@ -297,14 +302,14 @@ ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cm
 		return -9930;
 	}
 	remove(implant_so_full_path.c_str());
-	write_root_server_so_file(str_root_key, implant_so_full_path.c_str());
+	write_root_server_so_file(str_root_key, implant_so_full_path.c_str(), su_path);
 	return _internal_parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, implant_so_full_path.c_str());
 }
 
-ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path) {
+ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_path) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path);
+		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, su_path);
 		write_errcode_from_child(finfo, ret);
 		_exit(0);
 		return 0;

@@ -5,10 +5,11 @@
 
 void so_entry() {
     std::string who = getenv("PATH");
-    if(who.find(const_cast<char*>(static_inline_su_path)) != std::string::npos) {
+    std::string su_path = const_cast<char*>(static_inline_su_folder);
+    if(who.find(su_path) != std::string::npos) {
         return;
     }
-    std::string newWho = const_cast<char*>(static_inline_su_path);
+    std::string newWho = su_path;
     newWho += ":";
     newWho += who;
     setenv("PATH", newWho.c_str(), 1);

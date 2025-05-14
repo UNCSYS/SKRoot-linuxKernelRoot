@@ -10,9 +10,10 @@
 #include <sys/socket.h>
 
 namespace {
-const int PORT = 33445;
+std::string ROOT_KEY;
+std::string SU_PATH;
+int PORT = 33445;
 const char *POST_KEY = "9c5a503d973f104fc607aaf7f61ddb2cbc7af6fde95fc0e9";
-const char *SU_BASE_PATH = "/data/local/tmp";
 
 const char* HTML_CONTENT = R"***(
 <!DOCTYPE html>
@@ -273,7 +274,7 @@ const char* HTML_CONTENT = R"***(
     </style>
 
     <script>
-		let g_lastSuFullPath = '';
+		let g_lastInputCmd = 'id';
 		const g_userName = generateRandomString(32);
 		function generateRandomString(length) {
 			let result = '';
@@ -450,7 +451,7 @@ const char* HTML_CONTENT = R"***(
 		}
 
         function runRootCmdBtnClick() {
-			var shell = prompt("请输入要执行的ROOT命令:", "id");
+			var shell = prompt("请输入要执行的ROOT命令:", g_lastInputCmd);
 			if(!shell || !shell.length) {
 				return;
 			}
@@ -458,6 +459,7 @@ const char* HTML_CONTENT = R"***(
 				type: 'runRootCmd',
 				cmd: shell
 			};
+			g_lastInputCmd = shell;
 			sendJsonToServer(jsonData)
 			.then(data => {
 				appendConsole(data.content);
@@ -468,7 +470,7 @@ const char* HTML_CONTENT = R"***(
 		}
 
         function runKernelCmdBtnClick() {
-			var shell = prompt("请输入要执行的原生内核命令:", "id");
+			var shell = prompt("请输入要执行的原生内核命令:", g_lastInputCmd);
 			if(!shell || !shell.length) {
 				return;
 			}
@@ -476,6 +478,7 @@ const char* HTML_CONTENT = R"***(
 				type: 'runKernelCmd',
 				cmd: shell
 			};
+			g_lastInputCmd = shell;
 			sendJsonToServer(jsonData)
 			.then(data => {
 				appendConsole(data.content);
@@ -485,17 +488,16 @@ const char* HTML_CONTENT = R"***(
 			});
 		}
 
-        function installSuBtnClick() {
+        function copySuPathBtnClick() {
 			let jsonData = {
-				type: 'installSu',
+				type: 'copySuPath',
 			};
 			sendJsonToServer(jsonData)
 			.then(data => {
 				appendConsole(data.content);
 				if(data.err === '0') {
-					g_lastSuFullPath = data.su_hide_full_path;
-					const message = "安装部署su成功，su路径已复制到剪贴板。";
-					alert(message);
+					copyToClipboard(data.su_hide_full_path);
+					alert("su路径已复制到剪贴板。");
 				}
 			})
 			.catch(error => {
@@ -712,22 +714,6 @@ const char* HTML_CONTENT = R"***(
 			getInjectSuAppList(isSuForeverInject);
 		}
 
-        function uninstallSuBtnClick() {
-			let jsonData = {
-				type: 'uninstallSu',
-			};
-			sendJsonToServer(jsonData)
-			.then(data => {
-				appendConsole(data.content);
-				if(data.err === '0') {
-					g_lastSuFullPath = '';
-				}
-			})
-			.catch(error => {
-				alert('发送数据时发生错误');
-			});
-		}
-
         function copyConsoleBtnClick() {
 			let consoleText = document.getElementById('console');
 			copyToClipboard(consoleText.value);
@@ -746,8 +732,8 @@ const char* HTML_CONTENT = R"***(
 <body>
 	<div class="first-part">
 	    <span class="head-tip">Super Kernel Root内核级完美隐藏ROOT演示</span>
-		<span class="desc-tip">新一代SKRoot，挑战全网root检测手段，跟面具完全不同思路，摆脱面具被检测的弱点，完美隐藏root功能，全程不需要暂停SELinux，实现真正的SELinux  0%触碰，通用性强，通杀所有内核，不需要内核源码，直接patch内核，兼容安卓APP直接JNI调用，稳定、流畅、不闪退。</span>
-		<span class="warning-tip">当前是寄生模式，您可卸载原来的管理APP，避免管理APP被侦测</span>
+		<span class="desc-tip">新一代SKRoot，挑战全网root检测手段，跟面具完全不同思路，摆脱面具被检测的弱点，完美隐藏root功能，实现真正的SELinux  0%触碰，通用性强，通杀所有内核，不需要内核源码，直接patch内核，兼容安卓APP直接JNI调用，稳定、流畅、不闪退。</span>
+		<span class="warning-tip">当前是寄生模式，你可卸载原来的管理APP，避免管理APP被侦测</span>
 		<div class="divider"></div>
 	</div>
 
@@ -757,9 +743,8 @@ const char* HTML_CONTENT = R"***(
 			<button class="btn" onclick="testRootBtnClick()">1.测试ROOT权限</button>
 			<button class="btn" onclick="runRootCmdBtnClick()">2.执行ROOT命令</button>
 			<button class="btn" onclick="runKernelCmdBtnClick()">3.执行原生内核命令</button>
-			<button class="btn" onclick="installSuBtnClick()">4.安装部署su</button>
+			<button class="btn" onclick="copySuPathBtnClick()">4.复制su路径</button>
 			<button class="btn" onclick="injectSuBtnClick()">5.注入su到指定进程</button>
-			<button class="btn" onclick="uninstallSuBtnClick()">6.完全卸载清理su</button>
 		</div>
 		<div><div class="vertical"></div></div>
 		<div class="output-list">

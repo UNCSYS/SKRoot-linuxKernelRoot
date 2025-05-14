@@ -107,10 +107,10 @@ static bool write_transfer_data_from_child(const fork_pipe_info & finfo, void* d
 	if(write(finfo.fd_write_child, &data_len, sizeof(data_len))!=sizeof(data_len)) {
 		return false;
 	}
-	if(data_len == 0) {
+    if(data_len == 0) {
 		return true;
 	}
-	if(write(finfo.fd_write_child, data, data_len)!=data_len) {
+    if(write(finfo.fd_write_child, data, data_len)!=data_len) {
 		return false;
 	}
 	return false;
@@ -124,9 +124,9 @@ static bool read_transfer_data_from_child(fork_pipe_info & finfo, void* &data, s
 	if(data_len == 0) {
 		return true;
 	}
-	data = malloc(data_len);
-	memset(data, 0, data_len);
-	if(read(finfo.fd_read_child , data, data_len)!=data_len) {
+    data = malloc(data_len);
+    memset(data, 0, data_len);
+    if(read(finfo.fd_read_child , data, data_len)!=data_len) {
 		return false;
 	}
 	return true;

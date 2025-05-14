@@ -15,17 +15,19 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <sys/prctl.h>
+
 #include "kernel_root_kit_fork_helper.h"
 
 namespace kernel_root {
-
 	//获取ROOT权限，返回值为0则代表成功
 	static inline ssize_t get_root(const char* str_root_key) {
 		if(getuid() == 0) { return 0; }
 		if (str_root_key == NULL) { return -100; }
 		syscall(__NR_execve, str_root_key, NULL, NULL);
 		if(getuid() != 0) { return -101; }
-		return 0;
+        return 0;
 	}
 
 	//检查系统SELinux的是否为禁用状态

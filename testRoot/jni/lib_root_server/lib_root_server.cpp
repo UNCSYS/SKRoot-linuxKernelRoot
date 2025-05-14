@@ -13,15 +13,13 @@
 #include <mutex>
 
 #include "lib_root_server.h"
-#include "lib_root_server_inline_key.h"
-#include "lib_root_server_inline_so_name.h"
+#include "lib_root_server_inline.h"
 #include "../testRoot.h"
 #include "../kernel_root_kit/kernel_root_kit_umbrella.h"
 #include "../utils/stringUtils.h"
 #include "../utils/jsonUtils.h"
 
 namespace {
-constexpr const char* k_su_base_path = "/data/local/tmp";
 constexpr const char* recommend_files[] = {"libc++_shared.so"};
 
 }
@@ -195,14 +193,14 @@ std::string handle_heartbeat(const std::string & userName) {
 
 std::string handle_test_root() {
     std::stringstream sstr;
-    sstr << "get_root:" <<  kernel_root::get_root(const_cast<char*>(static_inline_root_key)) << std::endl << std::endl;
+    sstr << "get_root:" <<  kernel_root::get_root(ROOT_KEY.c_str()) << std::endl << std::endl;
     sstr << get_capability_info();
     return convert_2_json(sstr.str());
 }
 
 std::string handle_run_root_cmd(const std::string & cmd) {
     ssize_t err = 0;
-    std::string result = kernel_root::run_root_cmd(const_cast<char*>(static_inline_root_key), cmd.c_str(), err);
+    std::string result = kernel_root::run_root_cmd(ROOT_KEY.c_str(), cmd.c_str(), err);
 
     std::stringstream sstr;
     sstr << "run_root_cmd err:" << err << ", result:" << result;
@@ -211,39 +209,20 @@ std::string handle_run_root_cmd(const std::string & cmd) {
 
 std::string handle_run_kernel_cmd(const std::string & cmd) {
     ssize_t err = 0;
-    std::string result = kernel_root::run_init64_cmd_wrapper(const_cast<char*>(static_inline_root_key), cmd.c_str(), err);
+    std::string result = kernel_root::run_init64_cmd_wrapper(ROOT_KEY.c_str(), cmd.c_str(), err);
 
     std::stringstream sstr;
     sstr << "run_init64_cmd_wrapper err:" << err << ", result:" << result;
     return convert_2_json(sstr.str());
 }
 
-std::string handle_install_su() {
+std::string handle_copy_su_path() {
     ssize_t err = 0;
-    std::string su_hide_full_path = kernel_root::install_su(const_cast<char*>(static_inline_root_key), SU_BASE_PATH, err);
     std::stringstream sstr;
-    sstr << "install su err:" << err<<", su_hide_full_path:" << su_hide_full_path << std::endl;
-    
-    if (err == 0) {
-        sstr << "installSu done."<< std::endl;
-    }
+    sstr << "su_hide_full_path:" << SU_PATH << std::endl;
+    sstr << "copySuPath done."<< std::endl;
     std::map<std::string, std::string> param;
-    param["su_hide_full_path"] = su_hide_full_path;
-    param["err"] = std::to_string(err);
-    return convert_2_json(sstr.str(), param);
-}
-
-std::string handle_uninstall_su() {
-   
-    ssize_t err = kernel_root::safe_uninstall_su(const_cast<char*>(static_inline_root_key), SU_BASE_PATH);
-    std::stringstream sstr;
-    sstr << "uninstallSu err:" << err << std::endl;
-    if (err != 0) {
-        return convert_2_json(sstr.str());
-    }
-    sstr << "uninstallSu done.";
-    
-    std::map<std::string, std::string> param;
+    param["su_hide_full_path"] = SU_PATH;
     param["err"] = std::to_string(err);
     return convert_2_json(sstr.str(), param);
 }
@@ -259,14 +238,14 @@ std::string handle_get_app_list(bool isShowSystemApp, bool isShowThirtyApp, bool
         cmd = "pm list packages -3";
     }
     ssize_t err = 0;
-    std::string packages = kernel_root::run_root_cmd(const_cast<char*>(static_inline_root_key), cmd.c_str(), err);
+    std::string packages = kernel_root::run_root_cmd(ROOT_KEY.c_str(), cmd.c_str(), err);
     if(err != 0) {
         return convert_2_json_v(packageNames);
     }
 
     std::map<pid_t, std::string> pid_map;
     if(isShowRunningAPP) {
-        err = kernel_root::get_all_cmdline_process(const_cast<char*>(static_inline_root_key), pid_map);
+        err = kernel_root::get_all_cmdline_process(ROOT_KEY.c_str(), pid_map);
         if(err != 0) {
             return convert_2_json_v(packageNames);
         }
@@ -298,42 +277,37 @@ std::string handle_get_app_list(bool isShowSystemApp, bool isShowThirtyApp, bool
     return convert_2_json_v(packageNames);
 }
 
-void inject_su_thread() {
+void inject_su_thread(const std::string& su_path) {
     writeToLog("inject_su_thread enter");
 
-	// 1.获取su_xxx隐藏目录
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
-    g_inject_su_info.append_console_msg("su_hide_path ret val:" + su_hide_path);
+	std::filesystem::path path(su_path);
+	std::string su_folder = path.parent_path().string();
+    g_inject_su_info.append_console_msg("su_folder ret val:" + su_folder);
 
-	if (su_hide_path.empty()) {
-        g_inject_su_info.working = false;
-        return;
-    }
-
-    // 2.杀光所有历史进程
+    // 1.杀光所有历史进程
     std::set<pid_t> out;
-    ssize_t err = kernel_root::find_all_cmdline_process(const_cast<char*>(static_inline_root_key), g_inject_su_info.getAppName().c_str(), out);
+    ssize_t err = kernel_root::find_all_cmdline_process(ROOT_KEY.c_str(), g_inject_su_info.getAppName().c_str(), out);
     g_inject_su_info.append_console_msg("find_all_cmdline_process err:" + std::to_string(err) + ", cnt:" + std::to_string(out.size()));
     if (err) {
         g_inject_su_info.working = false;
         return;
     }
 
-    for (pid_t pid : out) { kernel_root::kill_process(const_cast<char*>(static_inline_root_key), pid); }
+    for (pid_t pid : out) { kernel_root::kill_process(ROOT_KEY.c_str(), pid); }
 
-	// 3.注入su环境变量到指定进程
+	// 2.注入su环境变量到指定进程
 	g_inject_su_info.append_console_msg("waiting for process creation:" + g_inject_su_info.getAppName());
 
     pid_t pid;
 	err = kernel_root::wait_and_find_cmdline_process(
-		const_cast<char*>(static_inline_root_key), g_inject_su_info.getAppName().c_str(), 60 * 1000, pid);
+		ROOT_KEY.c_str(), g_inject_su_info.getAppName().c_str(), 60 * 1000, pid);
     g_inject_su_info.append_console_msg("waiting for process creation err:" + std::to_string(err));
     if (err) {
         g_inject_su_info.working = false;
         return;
     }
-	err = kernel_root::inject_process_env64_PATH_wrapper(const_cast<char*>(static_inline_root_key), pid,
-														 su_hide_path.c_str(), kernel_root::api_offset_read_mode::only_read_file);
+	err = kernel_root::inject_process_env64_PATH_wrapper(ROOT_KEY.c_str(), pid,
+														 su_folder.c_str(), kernel_root::api_offset_read_mode::only_read_file);
     g_inject_su_info.append_console_msg("inject su err:" + std::to_string(err) + ", errmsg:" + strerror(errno));
     g_inject_su_info.success = true;
     g_inject_su_info.working = false;
@@ -355,7 +329,7 @@ std::string handle_inject_su_in_temp_app(const std::string & app_name) {
     writeToLog("start inject su thread, app name: " + app_name);
     g_inject_su_info.working = true;
     g_inject_su_info.success = false;
-    std::thread td(inject_su_thread);
+    std::thread td(inject_su_thread, SU_PATH);
     td.detach();
     return convert_2_json("ok", param);
 }
@@ -377,7 +351,7 @@ std::string handle_get_precheck_app_file_list(const std::string & app_name) {
     std::stringstream errmsg;
     std::map<std::string, std::string> output_file_path;
     std::set<pid_t> pid_arr;
-	ssize_t err = kernel_root::find_all_cmdline_process(const_cast<char*>(static_inline_root_key), app_name.c_str(), pid_arr);
+	ssize_t err = kernel_root::find_all_cmdline_process(ROOT_KEY.c_str(), app_name.c_str(), pid_arr);
 	if (err) {
         errmsg << "find_all_cmdline_process err:" << err << std::endl;
 		return convert_2_json_m(errmsg.str());
@@ -388,7 +362,7 @@ std::string handle_get_precheck_app_file_list(const std::string & app_name) {
 	}
 
     std::map<std::string, kernel_root::app_so_status> so_path_list;
-	err = kernel_root::parasite_precheck_app(const_cast<char*>(static_inline_root_key), app_name.c_str(), so_path_list);
+	err = kernel_root::parasite_precheck_app(ROOT_KEY.c_str(), app_name.c_str(), so_path_list);
     if (err) {
         errmsg << "parasite_precheck_app error:" << err << std::endl;
 		if(err == -9904) {
@@ -436,14 +410,12 @@ std::string handle_inject_su_in_forever_app(const std::string & app_name, const 
     std::stringstream errmsg;
     std::map<std::string, std::string> param;
     param["errcode"] = "0";
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
-	if (su_hide_path.empty()) {
-        param["errcode"] = "-1";
-        return convert_2_json_m("su_hide_path is empty");
-    }
+    
+	std::filesystem::path path(SU_PATH);
+	std::string su_folder = path.parent_path().string();
 
     std::set<pid_t> pid_arr;
-	ssize_t err = kernel_root::find_all_cmdline_process(const_cast<char*>(static_inline_root_key), app_name.c_str(), pid_arr);
+	ssize_t err = kernel_root::find_all_cmdline_process(ROOT_KEY.c_str(), app_name.c_str(), pid_arr);
 	if (err) {
         param["errcode"] = "-2";
         errmsg << "find_all_cmdline_process err:" << err << std::endl;
@@ -455,14 +427,14 @@ std::string handle_inject_su_in_forever_app(const std::string & app_name, const 
 		return convert_2_json(errmsg.str());
 	}
 
-	err = kernel_root::parasite_implant_su_env(const_cast<char*>(static_inline_root_key), app_name.c_str(), so_path.c_str(), su_hide_path);
+	err = kernel_root::parasite_implant_su_env(ROOT_KEY.c_str(), app_name.c_str(), so_path.c_str(), su_folder);
 	printf("parasite_implant_su_env err:%zd\n", err);
 	if(err) {
         param["errcode"] = "-4";
         std::string msg = "parasite_implant_su_env err:" + std::to_string(err);
         return convert_2_json(msg);
     }
-	for (pid_t pid : pid_arr) { kernel_root::kill_process(const_cast<char*>(static_inline_root_key), pid); }
+	for (pid_t pid : pid_arr) { kernel_root::kill_process(ROOT_KEY.c_str(), pid); }
     return convert_2_json("ok", param);
 }
 
@@ -533,11 +505,8 @@ std::string handle_post_action(std::string_view post_data) {
     if(type == "runKernelCmd") {
         return handle_run_kernel_cmd(cmd);
     }
-    if(type == "installSu") {
-        return handle_install_su();
-    }
-    if(type == "uninstallSu") {
-        return handle_uninstall_su();
+    if(type == "copySuPath") {
+        return handle_copy_su_path();
     }
     if(type == "getAppList") {
         return handle_get_app_list(showSystemApp, showThirdApp, showRunningApp);
@@ -558,7 +527,7 @@ std::string handle_post_action(std::string_view post_data) {
 }
 
 void handle_client(int client_socket) {
-    kernel_root::get_root(const_cast<char*>(static_inline_root_key));
+    kernel_root::get_root(ROOT_KEY.c_str());
     
     // Set a timeout for the receive operation
     struct timeval timeout;
@@ -666,11 +635,11 @@ int server_main() {
 void open_server_url() {
     ssize_t err = 0;
     std::string openUrlCmd = "am start -a android.intent.action.VIEW -d http://127.0.0.1:" + std::to_string(PORT);
-    kernel_root::run_root_cmd(const_cast<char*>(static_inline_root_key), openUrlCmd.c_str(), err);
+    kernel_root::run_root_cmd(ROOT_KEY.c_str(), openUrlCmd.c_str(), err);
 }
 
 void fork_child_main() {
-	if (kernel_root::get_root(const_cast<char*>(static_inline_root_key))) {
+	if (kernel_root::get_root(ROOT_KEY.c_str())) {
 		return;
 	}
     writeToLog("fork_child_main server enter");
@@ -683,6 +652,12 @@ static bool isLoaded = false;
 extern "C" void __attribute__((constructor)) root_server_entry() {
     if (isLoaded) { return; }
     isLoaded = true;
+
+    srand(time(NULL));
+    PORT = rand() % 40001 + 20000;
+
+    ROOT_KEY = const_cast<char*>(static_inline_root_key);
+    SU_PATH = const_cast<char*>(static_inline_su_path);
 
     {
         pid_t pid = fork();

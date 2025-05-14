@@ -1,18 +1,12 @@
 ﻿#include "testRoot.h"
 
-// TODO：请将此处的KEY替换为你的内核ROOT KEY
-#define ROOT_KEY "bz4kKoPVSAG1tnwlcs1PJ1qp6HtVymj60CoTgsjmMd1UALve"
+char ROOT_KEY[50] = {0};
 
 namespace {
-constexpr const char* k_su_base_path = "/data/local/tmp";
-constexpr const char* recommend_files[] = {"libc++_shared.so"};
-
+	//TODO: /data/local/tmp为演示路径，请自行放置/data/app/xxxxx路径下
+	constexpr const char* k_su_base_path = "/data/local/tmp";
+	constexpr const char* recommend_files[] = {"libc++_shared.so"};
 }
-
-void show_id() {
-	printf("%s\n", get_capability_info().c_str());
-}
-
 void test_root() {
 	// 获取ROOT权限
 	printf("%s\n", get_capability_info().c_str());
@@ -186,7 +180,17 @@ void test_clean_su_env() {
 }
 
 void test_implant_app(const char* target_pid_cmdline) {
-	// 1.寄生预检目标APP
+	if (kernel_root::get_root(ROOT_KEY) != 0) {
+		return;
+	}
+
+	// 1.获取su_xxx隐藏目录
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
+	printf("test_implant_app su_hide_path ret val:%s\n", su_hide_path.c_str());
+	if (su_hide_path.empty()) { return; }
+	std::string su_hide_full_path = su_hide_path + "/su";
+
+	// 2.寄生预检目标APP
 	std::set<pid_t> pid_arr;
 	ssize_t err = kernel_root::find_all_cmdline_process(ROOT_KEY, target_pid_cmdline, pid_arr);
 	if (err) {
@@ -252,12 +256,12 @@ void test_implant_app(const char* target_pid_cmdline) {
 		return;
     }
 	
-	// 2.寄生植入目标APP
-	err = kernel_root::parasite_implant_app(ROOT_KEY, target_pid_cmdline, it->first.c_str());
+	// 3.寄生植入目标APP
+	err = kernel_root::parasite_implant_app(ROOT_KEY, target_pid_cmdline, it->first.c_str(), su_hide_path.c_str());
 	printf("parasite_implant_app err:%zd\n", err);
 	if(err) { return; }
 
-	// 3.杀光所有历史进程
+	// 4.杀光所有历史进程
 	for (pid_t pid : pid_arr) { kernel_root::kill_process(ROOT_KEY, pid); }
 }
 
@@ -271,28 +275,28 @@ int main(int argc, char* argv[]) {
 		"\tUsage: testRoot id\n\n"
 
 		"2. 获取ROOT权限\n"
-		"\tUsage: testRoot get\n\n"
+		"\tUsage: testRoot <root-key> get\n\n"
 
 		"3. 执行ROOT命令\n"
-		"\tUsage: testRoot cmd <command>\n\n"
+		"\tUsage: testRoot <root-key> cmd <command>\n\n"
 
 		"4. 执行原生内核命令\n"
-		"\tUsage: testRoot init <command>\n\n"
+		"\tUsage: testRoot <root-key> init <command>\n\n"
 
 		"5. 安装部署su\n"
-		"\tUsage: testRoot su\n\n"
+		"\tUsage: testRoot <root-key> su\n\n"
 
 		"6. 临时注入su到指定进程\n"
-		"\tUsage: testRoot process <process-name>\n\n"
+		"\tUsage: testRoot <root-key> process <process-name>\n\n"
 
 		"7. 永久注入su到指定进程\n"
-		"\tUsage: testRoot implantSu <process-name>\n\n"
+		"\tUsage: testRoot <root-key> implantSu <process-name>\n\n"
 
 		"8. 完全卸载清理su\n"
-		"\tUsage: testRoot cleansu\n\n"
+		"\tUsage: testRoot <root-key> cleansu\n\n"
 
 		"9. 寄生目标APP\n"
-		"\tUsage: testRoot implantApp <process-name> <so-name>\n\n"
+		"\tUsage: testRoot <root-key> implantApp <process-name> <so-name>\n\n"
 
 		"本工具特点：\n"
 		"新一代SKRoot，跟面具完全不同思路，摆脱面具被检测的弱点，完美隐藏root功能，兼容安卓APP直接JNI稳定调用。\n"
@@ -301,12 +305,19 @@ int main(int argc, char* argv[]) {
 		"如需帮助，请使用对应的命令，或者查看上面的菜单。\n\n");
 	++argv;
 	--argc;
-	if (argc == 0) {
+	if (argc == 1 && strcmp(argv[0], "id") == 0) {
+		std::cout << get_capability_info() << std::endl;
+		return 0;
+	}
+	if (argc < 2) {
 		std::cout << "error param." << std::endl;
 		return 0;
 	}
+	strncpy(ROOT_KEY, argv[0], sizeof(ROOT_KEY) - 1);
+	++argv;
+	--argc;
+
 	std::map<std::string, std::function<void()>> command_map = {
-		{"id", []() { show_id(); }},
 		{"get", []() { test_root(); }},
 		{"cmd", [argc, argv]() { test_run_root_cmd(argc - 1, argv + 1); }},
 		{"init", [argc, argv]() { test_run_init64_cmd(argc - 1, argv + 1); }},

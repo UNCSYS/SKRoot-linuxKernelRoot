@@ -55,8 +55,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    private String rootKey = "bz4kKoPVSAG1tnwlcs1PJ1qp6HtVymj60CoTgsjmMd1UALve";
-    private String suBasePath = "/data/local/tmp";
+    private String rootKey = "";
+    private String suBasePath = "";
     private String lastInputCmd = "id";
     private SharedPreferences m_shareSave;
     private ProgressDialog m_loadingDlg = null;
@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        suBasePath = getApplicationInfo().nativeLibraryDir;
 
         m_shareSave = getSharedPreferences("zhcs", Context.MODE_PRIVATE);
         try {
@@ -81,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         showUserInputRootKeyDlg();
-        
+
         Button test_root_btn = findViewById(R.id.test_root_btn);
         Button run_root_cmd_btn = findViewById(R.id.run_root_cmd_btn);
         Button run_init_process_cmd_btn = findViewById(R.id.run_init_process_cmd_btn);
@@ -91,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Button implant_app_btn = findViewById(R.id.implant_app_btn);
         Button copy_info_btn = findViewById(R.id.copy_info_btn);
         Button clean_info_btn = findViewById(R.id.clean_info_btn);
-        
+
         test_root_btn.setOnClickListener(this);
         run_root_cmd_btn.setOnClickListener(this);
         run_init_process_cmd_btn.setOnClickListener(this);
@@ -101,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         implant_app_btn.setOnClickListener(this);
         copy_info_btn.setOnClickListener(this);
         clean_info_btn.setOnClickListener(this);
-        
     }
 
     @Override
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showSelectSuInjectModeDlg();
                 break;
             case R.id.clean_su_btn:
-                appendConsoleMsg(uninstallSu(rootKey,suBasePath));
+                onClickSuEnvUninstallBtn();
                 break;
             case R.id.implant_app_btn:
                 onClickImplantAppBtn();
@@ -225,6 +225,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             copyEditText(suFullPath);
             appendConsoleMsg("安装部署su成功，su路径已复制到剪贴板");
         }
+    }
+
+    public void onClickSuEnvUninstallBtn() {
+        appendConsoleMsg(uninstallSu(rootKey,suBasePath));
+        copyEditText("");
     }
 
     private void suTempInject() {

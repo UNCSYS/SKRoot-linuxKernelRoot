@@ -9,9 +9,8 @@
 #include "../utils/base64.h"
 #include "encryptor.h"
 
-#define RANDOM_GUID_LEN 8
+#define RANDOM_GUID_LEN 4
 #define ROOT_KEY_LEN 48
-#define ENCRYKEY "ECC08B04-B9FF-40B5-9596-4408626181D5"
 
 namespace kernel_root{
 namespace su{
@@ -59,7 +58,6 @@ static std::string create_su_hide_folder(const char* str_root_key,
 
 	encodeRootKey = base64_encode((const unsigned char*)encodeRootKey.c_str(),
 								  encodeRootKey.length());
-	encodeRootKey = encryp_string(encodeRootKey, ENCRYKEY);
 
 	std::string file_path = base_path;
 	file_path += "/";
@@ -67,10 +65,10 @@ static std::string create_su_hide_folder(const char* str_root_key,
 	file_path += encodeRootKey;
 	file_path += "/";
 	if (mkdir(file_path.c_str(), 0755)) {
-		return {};
+		//return {};
 	}
 	if (chmod(file_path.c_str(), 0777)) {
-		return {};
+		//return {};
 	}
 	return file_path;
 }
@@ -91,10 +89,7 @@ static inline std::string parse_root_key_by_su_path(
 		path.substr(0, n);
 	}
 
-	std::string decodeRootKey = uncryp_string(path, ENCRYKEY);
-
-	decodeRootKey = base64_decode(decodeRootKey);
-
+	std::string decodeRootKey = base64_decode(path);
 	if (decodeRootKey.length() < (RANDOM_GUID_LEN + ROOT_KEY_LEN)) {
 		return {};
 	}
