@@ -98,7 +98,6 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	hook_func_start_addr += nHookFuncSize;
 
 	auto next_asm_line_bytes_cnt = (task_struct_offset_cred.size() - 1) * 4;
-
 	std::stringstream sstrAsm;
 
 	sstrAsm
@@ -154,6 +153,8 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "LDP X7, X8, [sp], #16" << std::endl
 		<< "B #" << do_execve_entry_hook_jump_back_addr - (hook_func_start_addr + 0xA4 + next_asm_line_bytes_cnt) << std::endl;
 
+
+
 	std::string strAsmCode = sstrAsm.str();
 	std::cout << std::endl << strAsmCode << std::endl;
 
@@ -168,7 +169,9 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	memcpy(&hookOrigCmd, (void*)((size_t)&m_file_buf[0] + do_execve_addr), sizeof(hookOrigCmd));
 	std::string strHookOrigCmd = bytes_2_hex_str((const unsigned char*)hookOrigCmd, sizeof(hookOrigCmd));
 	strBytes = strHookOrigCmd + strBytes.substr(0x4 * 2);
+
 	vec_out_patch_bytes_data.push_back({ strBytes, hook_func_start_addr });
+
 	std::stringstream sstrAsm2;
 	sstrAsm2
 		<< "B #" << hook_func_start_addr - do_execve_addr << std::endl;
@@ -180,7 +183,7 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	vec_out_patch_bytes_data.push_back({ strBytes2, do_execve_addr });
 
 	hook_func_start_addr += nHookFuncSize;
-	//std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
+	std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
 
 	return hook_func_start_addr;
 }

@@ -7,6 +7,7 @@ struct KernelSymbolOffset {
 	size_t _text = 0;
 	size_t _stext = 0;
 	size_t die = 0;
+	size_t arm64_notify_die = 0;
 
 	size_t __do_execve_file = 0;
 	size_t do_execveat_common = 0;
@@ -15,8 +16,12 @@ struct KernelSymbolOffset {
 	size_t do_execve = 0;
 
 	size_t avc_denied = 0;
+	size_t filldir64 = 0;
+
 	size_t revert_creds = 0;
 	size_t prctl_get_seccomp = 0;
+
+
 	size_t __cfi_check = 0;
 	size_t __cfi_check_fail = 0;
 	size_t __cfi_slowpath_diag = 0;

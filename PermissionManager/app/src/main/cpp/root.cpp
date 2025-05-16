@@ -319,7 +319,8 @@ Java_com_linux_permissionmanager_MainActivity_parasiteImplantApp(
         jobject /* this */,
         jstring rootKey,
         jstring targetProcessCmdline,
-        jstring targetSoFullPath) {
+        jstring targetSoFullPath,
+        jstring targetSuFolderPath) {
     stringstream sstr;
     ssize_t err;
     const char *str1 = env->GetStringUTFChars(rootKey, 0);
@@ -334,21 +335,15 @@ Java_com_linux_permissionmanager_MainActivity_parasiteImplantApp(
     string strTargetSoFullPath = str1;
     env->ReleaseStringUTFChars(targetSoFullPath, str1);
 
-    std::filesystem::path path(strTargetSoFullPath.c_str());
-    std::string appFolderPath = path.parent_path().string();
+    str1 = env->GetStringUTFChars(targetSuFolderPath, 0);
+    string strTargetSuFolderPath = str1;
+    env->ReleaseStringUTFChars(targetSuFolderPath, str1);
 
-    //安装su工具套件
-    std::string su_hide_full_path = kernel_root::safe_install_su(strRootKey.c_str(), appFolderPath.c_str(), err);
-    sstr << "install su into ["<< appFolderPath <<"], err:" << err<<", su_hide_full_path:" << su_hide_full_path << std::endl;
-    if (err != 0) {
-        return env->NewStringUTF(sstr.str().c_str());
-    }
-    sstr << "installSu done."<< std::endl << std::endl;
-    err = kernel_root::safe_parasite_implant_app(strRootKey.c_str(), strTargetProcessCmdline.c_str(), strTargetSoFullPath.c_str(), su_hide_full_path.c_str());
+    err = kernel_root::safe_parasite_implant_app(strRootKey.c_str(), strTargetProcessCmdline.c_str(), strTargetSoFullPath.c_str(), strTargetSuFolderPath.c_str());
     if (err != 0) {
         sstr << "parasite_implant_app err:"<< err << std::endl;
 
-        err = kernel_root::safe_uninstall_su(strRootKey.c_str(), appFolderPath.c_str());
+        err = kernel_root::safe_uninstall_su(strRootKey.c_str(), strTargetSuFolderPath.c_str());
         sstr << "uninstallSu err:" << err << std::endl;
         return env->NewStringUTF(sstr.str().c_str());
     }

@@ -51,6 +51,9 @@
     <ClCompile Include="analyze\analyze_kernel.cpp">
       <Filter>analyze</Filter>
     </ClCompile>
+    <ClCompile Include="patch_filldir64.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="patch_do_execve.h">
@@ -91,6 +94,9 @@
     </ClInclude>
     <ClInclude Include="analyze\analyze_kernel.h">
       <Filter>analyze</Filter>
+    </ClInclude>
+    <ClInclude Include="patch_filldir64.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

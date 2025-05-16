@@ -64,12 +64,14 @@ size_t PatchAvcDenied::patch_avc_denied(size_t hook_func_start_addr, const std::
 	sstrAsm
 		<< "STP X7, X8, [sp, #-16]!" << std::endl
 		<< "STP X9, X10, [sp, #-16]!" << std::endl;
+
 	sstrAsm << "MRS X7, SP_EL0" << std::endl;
 	for (auto x = 0; x < task_struct_offset_cred.size(); x++) {
 		if (x != task_struct_offset_cred.size() - 1) {
 			sstrAsm << "LDR X7, [X7, #" << task_struct_offset_cred[x] << "]" << std::endl;
 		}
 	}
+
 	sstrAsm << "LDR X7, [X7, #" << task_struct_offset_cred[task_struct_offset_cred.size() - 1] << "]" << std::endl
 		<< "CBZ X7, #" << 88 << std::endl
 		<< "ADD X7, X7, #"<< atomic_usage_len << std::endl
@@ -122,6 +124,6 @@ size_t PatchAvcDenied::patch_avc_denied(size_t hook_func_start_addr, const std::
 	}
 	vec_out_patch_bytes_data.push_back({ strBytes2, avc_denied_addr });
 	hook_func_start_addr += nHookFuncSize;
-	//std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
+	std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
 	return hook_func_start_addr + nHookFuncSize;
 }

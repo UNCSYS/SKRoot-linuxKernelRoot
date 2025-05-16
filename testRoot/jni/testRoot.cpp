@@ -3,8 +3,7 @@
 char ROOT_KEY[50] = {0};
 
 namespace {
-	//TODO: /data/local/tmp为演示路径，请自行放置/data/app/xxxxx路径下
-	constexpr const char* k_su_base_path = "/data/local/tmp";
+	constexpr const char* k_su_base_path = "/data/vendor";
 	constexpr const char* recommend_files[] = {"libc++_shared.so"};
 }
 void test_root() {
@@ -64,7 +63,7 @@ void test_su_env_temp_inject(const char* target_pid_cmdline) {
 	}
 
 	// 1.获取su_xxx隐藏目录
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path);
 	printf("su_hide_path ret val:%s\n", su_hide_path.c_str());
 	if (su_hide_path.empty()) { return; }
 
@@ -94,7 +93,7 @@ void test_su_env_forever_inject(const char* target_pid_cmdline) {
 		return;
 	}
 	// 1.获取su_xxx隐藏目录
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path);
 	printf("su_hide_path ret val:%s\n", su_hide_path.c_str());
 	if (su_hide_path.empty()) { return; }
 
@@ -175,7 +174,7 @@ void test_su_env_forever_inject(const char* target_pid_cmdline) {
 
 void test_clean_su_env() {
 	// 完全卸载清理su
-	ssize_t err = kernel_root::uninstall_su(ROOT_KEY, k_su_base_path, "su");
+	ssize_t err = kernel_root::uninstall_su(ROOT_KEY, k_su_base_path);
 	printf("uninstall_su err:%zd\n", err);
 }
 
@@ -185,7 +184,7 @@ void test_implant_app(const char* target_pid_cmdline) {
 	}
 
 	// 1.获取su_xxx隐藏目录
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path, "su");
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(k_su_base_path);
 	printf("test_implant_app su_hide_path ret val:%s\n", su_hide_path.c_str());
 	if (su_hide_path.empty()) { return; }
 	std::string su_hide_full_path = su_hide_path + "/su";

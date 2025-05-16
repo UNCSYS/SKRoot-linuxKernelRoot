@@ -3,12 +3,6 @@
 #include <iostream>
 #include <set>
 namespace kernel_root {
-namespace {
-    constexpr const char * k_implant_root_server_so_name = "lib_root_server.so";
-    constexpr const char * k_implant_su_env_so_name = "lib_su_env.so";
-    constexpr const char * k_implant_so_name_arr[] = {k_implant_root_server_so_name, k_implant_su_env_so_name};
-
-}
 enum app_so_status {
     unknow = 0,
     running,

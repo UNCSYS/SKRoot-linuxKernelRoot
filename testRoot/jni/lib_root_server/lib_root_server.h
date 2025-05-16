@@ -11,7 +11,7 @@
 
 namespace {
 std::string ROOT_KEY;
-std::string SU_PATH;
+std::string SU_BASE_PATH;
 int PORT = 33445;
 const char *POST_KEY = "9c5a503d973f104fc607aaf7f61ddb2cbc7af6fde95fc0e9";
 
@@ -274,6 +274,7 @@ const char* HTML_CONTENT = R"***(
     </style>
 
     <script>
+		let g_lastSuFullPath = '';
 		let g_lastInputCmd = 'id';
 		const g_userName = generateRandomString(32);
 		function generateRandomString(length) {
@@ -487,23 +488,25 @@ const char* HTML_CONTENT = R"***(
 				alert('发送数据时发生错误');
 			});
 		}
-
-        function copySuPathBtnClick() {
+		
+        function installSuBtnClick() {
 			let jsonData = {
-				type: 'copySuPath',
+				type: 'installSu',
 			};
 			sendJsonToServer(jsonData)
 			.then(data => {
 				appendConsole(data.content);
 				if(data.err === '0') {
+					g_lastSuFullPath = data.su_hide_full_path;
 					copyToClipboard(data.su_hide_full_path);
-					alert("su路径已复制到剪贴板。");
+					alert("安装部署su成功，su路径已复制到剪贴板。");
 				}
 			})
 			.catch(error => {
 				alert('发送数据时发生错误');
 			});
 		}
+
 		
 		function injectSuInTempApp(appName) {
 			let jsonData = {
@@ -713,6 +716,23 @@ const char* HTML_CONTENT = R"***(
 		    let isSuForeverInject = !confirm("请选择模式：\n\n点击确定选择：临时注入su\n点击取消选择：永久注入su");
 			getInjectSuAppList(isSuForeverInject);
 		}
+		
+        function uninstallSuBtnClick() {
+			let jsonData = {
+				type: 'uninstallSu',
+			};
+			sendJsonToServer(jsonData)
+			.then(data => {
+				appendConsole(data.content);
+				if(data.err === '0') {
+					g_lastSuFullPath = '';
+					copyToClipboard('');
+				}
+			})
+			.catch(error => {
+				alert('发送数据时发生错误');
+			});
+		}
 
         function copyConsoleBtnClick() {
 			let consoleText = document.getElementById('console');
@@ -743,8 +763,9 @@ const char* HTML_CONTENT = R"***(
 			<button class="btn" onclick="testRootBtnClick()">1.测试ROOT权限</button>
 			<button class="btn" onclick="runRootCmdBtnClick()">2.执行ROOT命令</button>
 			<button class="btn" onclick="runKernelCmdBtnClick()">3.执行原生内核命令</button>
-			<button class="btn" onclick="copySuPathBtnClick()">4.复制su路径</button>
+			<button class="btn" onclick="installSuBtnClick()">4.安装部署su</button>
 			<button class="btn" onclick="injectSuBtnClick()">5.注入su到指定进程</button>
+			<button class="btn" onclick="uninstallSuBtnClick()">6.完全卸载清理su</button>
 		</div>
 		<div><div class="vertical"></div></div>
 		<div class="output-list">

@@ -4,7 +4,8 @@
 #include "lib_su_env_inline.h"
 
 void so_entry() {
-    std::string who = getenv("PATH");
+    char k_path[] = {'P', 'A', 'T', 'H', '\0'};
+    std::string who = getenv(k_path);
     std::string su_path = const_cast<char*>(static_inline_su_folder);
     if(who.find(su_path) != std::string::npos) {
         return;
@@ -12,7 +13,7 @@ void so_entry() {
     std::string newWho = su_path;
     newWho += ":";
     newWho += who;
-    setenv("PATH", newWho.c_str(), 1);
+    setenv(k_path, newWho.c_str(), 1);
 }
 
 extern "C" void __attribute__((constructor)) inject_su_path_entry() {

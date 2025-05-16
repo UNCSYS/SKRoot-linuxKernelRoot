@@ -33,6 +33,7 @@ bool AnalyzeKernel::find_symbol_offset() {
 	m_kernel_sym_offset._stext = m_kernel_sym_parser.kallsyms_lookup_name("_stext");
 
 	m_kernel_sym_offset.die = m_kernel_sym_parser.kallsyms_lookup_name("die");
+	m_kernel_sym_offset.arm64_notify_die = m_kernel_sym_parser.kallsyms_lookup_name("arm64_notify_die");
 
 	m_kernel_sym_offset.__do_execve_file = m_kernel_sym_parser.kallsyms_lookup_name("__do_execve_file");
 
@@ -54,9 +55,11 @@ bool AnalyzeKernel::find_symbol_offset() {
 	if (m_kernel_sym_offset.avc_denied == 0) {
 		m_kernel_sym_offset.avc_denied = m_kernel_sym_parser.kallsyms_lookup_name("avc_denied", true);
 	}
+	m_kernel_sym_offset.filldir64 = m_kernel_sym_parser.kallsyms_lookup_name("filldir64", true);
 
 	m_kernel_sym_offset.revert_creds = m_kernel_sym_parser.kallsyms_lookup_name("revert_creds");
 	m_kernel_sym_offset.prctl_get_seccomp = m_kernel_sym_parser.kallsyms_lookup_name("prctl_get_seccomp"); // backup: seccomp_filter_release
+	
 	m_kernel_sym_offset.__cfi_check = m_kernel_sym_parser.kallsyms_lookup_name("__cfi_check");
 	m_kernel_sym_offset.__cfi_check_fail = m_kernel_sym_parser.kallsyms_lookup_name("__cfi_check_fail");
 	m_kernel_sym_offset.__cfi_slowpath_diag = m_kernel_sym_parser.kallsyms_lookup_name("__cfi_slowpath_diag");

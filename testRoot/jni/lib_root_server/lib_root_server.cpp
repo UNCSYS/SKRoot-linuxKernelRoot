@@ -62,12 +62,12 @@ private:
 bool try_lock_file(const char* path) {
     int fd = open(path, O_CREAT, 0666);
     if (fd == -1) {
-        perror("Unable to open the lock file");
+        //perror("Unable to open the lock file");
         return false;
     }
 
     if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-        perror("Another instance is running");
+        //perror("Another instance is running");
         close(fd);  // Don't forget to close the file descriptor
         return false;
     }
@@ -77,41 +77,8 @@ bool try_lock_file(const char* path) {
     return true;
 }
 
-std::set<std::string> get_self_so_paths() {
-    char line[1024] = { 0 };
-    std::set<std::string> so_paths;
-    FILE* fp = fopen("/proc/self/maps", "r");
-    if (fp != NULL) {
-        while (fgets(line, sizeof(line), fp)) {
-            if (strstr(line, ".so")) {
-                char* start = strstr(line, "/");
-                if (start) {
-                    char* end = strchr(start, '\n');
-                    if (end) {
-                        *end = '\0';
-                        so_paths.insert(std::string(start));
-                    }
-                }
-            }
-        }
-        fclose(fp);
-    }
-    return so_paths;
-}
-
 bool is_already_running() {
-    std::set<std::string> current_so_paths = get_self_so_paths();
-    std::string so_name = const_cast<char*>(static_inline_so_name);
-    std::string tmp_path_end = "/" + so_name;
-    size_t len = tmp_path_end.length();
-
-    auto it = std::find_if(current_so_paths.begin(), current_so_paths.end(), [len, &tmp_path_end](const std::string& path) {
-        return path.size() >= len && path.compare(path.size() - len, len, tmp_path_end) == 0;
-    });
-    if(it == current_so_paths.end()) {
-        return true;
-    }
-    std::string lock_file_path = *it + ".lock";
+    std::string lock_file_path = const_cast<char*>(static_inline_lock_file_path);
     return !try_lock_file(lock_file_path.c_str());
 }
 
@@ -216,16 +183,37 @@ std::string handle_run_kernel_cmd(const std::string & cmd) {
     return convert_2_json(sstr.str());
 }
 
-std::string handle_copy_su_path() {
+std::string handle_install_su() {
     ssize_t err = 0;
+    std::string su_hide_full_path = kernel_root::install_su(ROOT_KEY.c_str(), SU_BASE_PATH.c_str(), err);
     std::stringstream sstr;
-    sstr << "su_hide_full_path:" << SU_PATH << std::endl;
-    sstr << "copySuPath done."<< std::endl;
+    sstr << "install su err:" << err<<", su_hide_full_path:" << su_hide_full_path << std::endl;
+    
+    if (err == 0) {
+        sstr << "installSu done."<< std::endl;
+    }
     std::map<std::string, std::string> param;
-    param["su_hide_full_path"] = SU_PATH;
+    param["su_hide_full_path"] = su_hide_full_path;
     param["err"] = std::to_string(err);
     return convert_2_json(sstr.str(), param);
 }
+
+std::string handle_uninstall_su() {
+   
+    ssize_t err = kernel_root::safe_uninstall_su(ROOT_KEY.c_str(), SU_BASE_PATH.c_str());
+    std::stringstream sstr;
+    sstr << "uninstallSu err:" << err << std::endl;
+    if (err != 0) {
+        return convert_2_json(sstr.str());
+    }
+    sstr << "uninstallSu done.";
+    
+    std::map<std::string, std::string> param;
+    param["err"] = std::to_string(err);
+    return convert_2_json(sstr.str(), param);
+}
+
+
 
 std::string handle_get_app_list(bool isShowSystemApp, bool isShowThirtyApp, bool isShowRunningAPP) {
     std::vector<std::string> packageNames;
@@ -329,7 +317,7 @@ std::string handle_inject_su_in_temp_app(const std::string & app_name) {
     writeToLog("start inject su thread, app name: " + app_name);
     g_inject_su_info.working = true;
     g_inject_su_info.success = false;
-    std::thread td(inject_su_thread, SU_PATH);
+    std::thread td(inject_su_thread, SU_BASE_PATH);
     td.detach();
     return convert_2_json("ok", param);
 }
@@ -411,8 +399,11 @@ std::string handle_inject_su_in_forever_app(const std::string & app_name, const 
     std::map<std::string, std::string> param;
     param["errcode"] = "0";
     
-	std::filesystem::path path(SU_PATH);
-	std::string su_folder = path.parent_path().string();
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(SU_BASE_PATH.c_str());
+	if (su_hide_path.empty()) {
+        param["errcode"] = "-1";
+        return convert_2_json_m("su_hide_path is empty");
+    }
 
     std::set<pid_t> pid_arr;
 	ssize_t err = kernel_root::find_all_cmdline_process(ROOT_KEY.c_str(), app_name.c_str(), pid_arr);
@@ -427,7 +418,7 @@ std::string handle_inject_su_in_forever_app(const std::string & app_name, const 
 		return convert_2_json(errmsg.str());
 	}
 
-	err = kernel_root::parasite_implant_su_env(ROOT_KEY.c_str(), app_name.c_str(), so_path.c_str(), su_folder);
+	err = kernel_root::parasite_implant_su_env(ROOT_KEY.c_str(), app_name.c_str(), so_path.c_str(), su_hide_path);
 	printf("parasite_implant_su_env err:%zd\n", err);
 	if(err) {
         param["errcode"] = "-4";
@@ -505,8 +496,11 @@ std::string handle_post_action(std::string_view post_data) {
     if(type == "runKernelCmd") {
         return handle_run_kernel_cmd(cmd);
     }
-    if(type == "copySuPath") {
-        return handle_copy_su_path();
+    if(type == "installSu") {
+        return handle_install_su();
+    }
+    if(type == "uninstallSu") {
+        return handle_uninstall_su();
     }
     if(type == "getAppList") {
         return handle_get_app_list(showSystemApp, showThirdApp, showRunningApp);
@@ -657,7 +651,7 @@ extern "C" void __attribute__((constructor)) root_server_entry() {
     PORT = rand() % 40001 + 20000;
 
     ROOT_KEY = const_cast<char*>(static_inline_root_key);
-    SU_PATH = const_cast<char*>(static_inline_su_path);
+    SU_BASE_PATH = const_cast<char*>(static_inline_su_base);
 
     {
         pid_t pid = fork();

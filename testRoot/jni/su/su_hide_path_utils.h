@@ -4,73 +4,133 @@
 #include <stdarg.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/xattr.h>
 #include <time.h>
 #include <unistd.h>
-#include "../utils/base64.h"
-#include "encryptor.h"
+#include <filesystem>
+#include "su_encryptor.h"
 
 #define RANDOM_GUID_LEN 4
 #define ROOT_KEY_LEN 48
+#define ENCRYKEY "ECC08B04-B9FF-40B5-9596-4408626181D5"
 
 namespace kernel_root{
 namespace su{
+    /*
+ * xattr name for SELinux attributes.
+ * This may have been exported via Kernel uapi header.
+ */
+#ifndef XATTR_NAME_SELINUX
+#define XATTR_NAME_SELINUX "security.selinux"
+#endif
 
-static std::string find_su_hide_folder_path(
-	const char* base_path,
-	const char* su_hide_folder_head_flag = "su") {
-	std::string id;
+#ifndef SELINUX_FILE_FLAG
+#define SELINUX_FILE_FLAG "u:object_r:system_file:s0"
+#endif
+
+static bool set_file_allow_access_mode(const std::string & file_full_path) {
+    if (chmod(file_full_path.c_str(), 0777)) {
+        return false;
+    }
+    if (setxattr(file_full_path.c_str(), XATTR_NAME_SELINUX, SELINUX_FILE_FLAG, strlen(SELINUX_FILE_FLAG) + 1, 0)) {
+        return false;
+    }
+    return true;
+}
+
+
+static std::string __internal_find_su_hide_folder_path(
+		int deep,
+		const char* base_path) {
+	std::string folder;
 	DIR* dir;
 	struct dirent* entry;
-	const char* su_head = su_hide_folder_head_flag;
 
 	dir = opendir(base_path);
 	if (dir == NULL)
-		return id;
+		return {};
 
 	while ((entry = readdir(dir)) != NULL) {
 		if ((strcmp(entry->d_name, ".") == 0) ||
 			(strcmp(entry->d_name, "..") == 0)) {
 			continue;
 		} else if (entry->d_type != DT_DIR) {
-			continue;
-		} else if (strlen(entry->d_name) <= strlen(su_head)) {
+            if (strcmp(entry->d_name, "su") == 0) {
+                folder = base_path;
+                break;
+            }
 			continue;
 		}
-		if (!strstr(entry->d_name, su_head)) {
-			continue;
+		std::string next_path = base_path;
+		next_path += "/";
+		next_path += entry->d_name;
+		std::string next_found = __internal_find_su_hide_folder_path(deep + 1, next_path.c_str());
+		if(!next_found.empty()) {
+			folder = next_found;
+			break;
 		}
-		id = base_path;
-		id += "/";
-		id += entry->d_name;
-		break;
 	}
 	closedir(dir);
-	return id;
+	return folder;
+}
+
+static std::string find_su_hide_folder_path(
+	const char* base_path) {
+	return __internal_find_su_hide_folder_path(0, base_path);
+}
+
+static bool __create_directory_if_not_exists(const std::string& dir_path) {
+    if (access(dir_path.c_str(), F_OK) == -1) {
+        return mkdir(dir_path.c_str(), 0755) == 0;
+    }
+    return true;
 }
 
 static std::string create_su_hide_folder(const char* str_root_key,
-										 const char* base_path,
-										 const char* su_hide_folder_head_flag) {
-	char guid[RANDOM_GUID_LEN] = {0};
-	rand_str(guid, sizeof(guid));
-	std::string encodeRootKey(guid, sizeof(guid));
-	encodeRootKey += str_root_key;
+                                         const char* base_path) {
 
-	encodeRootKey = base64_encode((const unsigned char*)encodeRootKey.c_str(),
-								  encodeRootKey.length());
+    std::string before8 = std::string(str_root_key).substr(0, 8);
+    std::transform(before8.begin(), before8.end(), before8.begin(), [](unsigned char c) { return std::tolower(c); });
 
+    std::string before16 = std::string(str_root_key).substr(0, 16);
+
+    char guid[RANDOM_GUID_LEN] = {0};
+    rand_str(guid, sizeof(guid));
+    std::string encodeRootKey(guid, sizeof(guid));
+    encodeRootKey += str_root_key;
+
+	encodeRootKey = encryp_string(encodeRootKey, ENCRYKEY);
+
+    std::string file_path = base_path;
+    file_path += "/" + before8;
+
+    // Check and create directories
+    if (!__create_directory_if_not_exists(file_path)) return {};
+    if (!set_file_allow_access_mode(file_path)) return {};
+
+    file_path += "/" + before16;
+    if (!__create_directory_if_not_exists(file_path)) return {};
+    if (!set_file_allow_access_mode(file_path)) return {};
+
+    file_path += "/_" + encodeRootKey;
+    if (!__create_directory_if_not_exists(file_path)) return {};
+    if (!set_file_allow_access_mode(file_path)) return {};
+
+    return file_path + "/";
+}
+
+static bool del_su_hide_folder(const char* str_root_key,
+										 const char* base_path) {
+
+	std::string before8 = std::string(str_root_key).substr(0, 8);
+	std::transform(before8.begin(), before8.end(), before8.begin(), [](unsigned char c) { return std::tolower(c); });
 	std::string file_path = base_path;
-	file_path += "/";
-	file_path += su_hide_folder_head_flag;
-	file_path += encodeRootKey;
-	file_path += "/";
-	if (mkdir(file_path.c_str(), 0755)) {
-		//return {};
+	file_path += "/" + before8;
+	try {
+		std::filesystem::remove_all(file_path);
+	} catch (...) {
 	}
-	if (chmod(file_path.c_str(), 0777)) {
-		//return {};
-	}
-	return file_path;
+	return std::filesystem::exists(file_path);
 }
 
 static inline std::string parse_root_key_by_su_path(
@@ -89,7 +149,8 @@ static inline std::string parse_root_key_by_su_path(
 		path.substr(0, n);
 	}
 
-	std::string decodeRootKey = base64_decode(path);
+	std::string decodeRootKey = uncryp_string(path, ENCRYKEY);
+
 	if (decodeRootKey.length() < (RANDOM_GUID_LEN + ROOT_KEY_LEN)) {
 		return {};
 	}

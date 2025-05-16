@@ -6,6 +6,7 @@
 #include "kernel_root_kit_lib_root_server_data.h"
 #include "kernel_root_kit_lib_su_env_data.h"
 #include "kernel_root_kit_parasite_patch_elf.h"
+#include "kernel_root_kit_random.h"
 #include "../lib_root_server/lib_root_server_inline.h"
 #include "../lib_su_env/lib_su_env_inline.h"
 #include <string.h>
@@ -35,11 +36,6 @@ namespace {
 		std::filesystem::path p(path);
 		return p.filename();
 	}
-
-	std::string remove_useless_flag(const char* path) {
-		std::filesystem::path p(path);
-		return p.filename();
-	}
 }
 
 ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline,
@@ -65,15 +61,6 @@ ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_c
 		std::set<std::string> current_so_paths = get_all_so_paths(pid);
 		for (const std::string& path : current_so_paths) {
 			std::string filename = get_name_from_path(path.c_str());
-
-			bool skip = false;
-			for (const auto& so_name : k_implant_so_name_arr) {
-				if (filename == so_name) {
-					skip = true;
-					break;
-				}
-			}
-			if (skip) continue;
 
 			if(path.find(arm64_key_folder) != std::string::npos) {
 				if(path.find(app_path) != std::string::npos) {
@@ -104,15 +91,6 @@ ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_c
 			}
 			std::string str_d_name = entry->d_name;
 			std::string full_path = lib_path + "/" + str_d_name;
-
-			bool skip = false;
-			for (const auto& so_name : k_implant_so_name_arr) {
-				if (str_d_name == so_name) {
-					skip = true;
-					break;
-				}
-			}
-			if (skip) continue;
 			if(output_so_full_path.find(full_path) != output_so_full_path.end()) {
 				continue;
 			}
@@ -178,7 +156,7 @@ bool replace_feature_string_in_buf(const char *feature_string_buf, size_t featur
 	return write;
 }
 
-bool write_root_server_so_file(const char* str_root_key, const char* implant_so_full_path, const char* su_path) {
+bool write_root_server_so_file(const char* str_root_key, const char* implant_so_full_path, const char* su_folder_path) {
 	std::shared_ptr<char> sp_lib_root_server_file_data(new (std::nothrow) char[kernel_root::lib_root_server_file_size], std::default_delete<char[]>());
 	if(!sp_lib_root_server_file_data) {
 		return false;
@@ -192,14 +170,21 @@ bool write_root_server_so_file(const char* str_root_key, const char* implant_so_
 		return false;
 	}
 
-	// write so name
-	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_so_name), sizeof(static_inline_so_name), k_implant_root_server_so_name, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
+ 	std::filesystem::path path(implant_so_full_path);
+    std::string dir_path = path.parent_path().string();
+	char lib_name[20] = {0};
+    generate_lib_name(lib_name);
+	std::string lock_file_full_path = dir_path + "/";
+	lock_file_full_path += lib_name;
+
+	// write lock file path
+	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_lock_file_path), sizeof(static_inline_lock_file_path), lock_file_full_path.c_str(), sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
 		ROOT_PRINTF("write so name failed.\n");
 		return false;
 	}
 
 	// write su path
-	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_path), sizeof(static_inline_su_path), su_path, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
+	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_base), sizeof(static_inline_su_base), su_folder_path, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
 		ROOT_PRINTF("write su base path failed.\n");
 		return false;
 	}
@@ -294,22 +279,24 @@ ssize_t _internal_parasite_implant_app(const char* str_root_key, const char* tar
 	return 0;
 }
 
-ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_path) {
+ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_folder_path) {
 	std::filesystem::path path(original_so_full_path);
 	std::string folder_path = path.parent_path().string();
-	std::string implant_so_full_path = folder_path  + "/" + k_implant_root_server_so_name;
+	char lib_name[20] = {0};
+    generate_lib_name(lib_name);
+	std::string implant_so_full_path = folder_path  + "/" + lib_name;
 	if (kernel_root::get_root(str_root_key) != 0) {
 		return -9930;
 	}
 	remove(implant_so_full_path.c_str());
-	write_root_server_so_file(str_root_key, implant_so_full_path.c_str(), su_path);
+	write_root_server_so_file(str_root_key, implant_so_full_path.c_str(), su_folder_path);
 	return _internal_parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, implant_so_full_path.c_str());
 }
 
-ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_path) {
+ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_folder_path) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, su_path);
+		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, su_folder_path);
 		write_errcode_from_child(finfo, ret);
 		_exit(0);
 		return 0;
@@ -329,7 +316,9 @@ ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_p
 ssize_t parasite_implant_su_env(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, std::string_view su_folder) {
 	std::filesystem::path path(original_so_full_path);
 	std::string folder_path = path.parent_path().string();
-	std::string implant_so_full_path = folder_path  + "/" + k_implant_su_env_so_name;
+	char lib_name[20] = {0};
+    generate_lib_name(lib_name);
+	std::string implant_so_full_path = folder_path  + "/" + lib_name;
 	if (kernel_root::get_root(str_root_key) != 0) {
 		return -9940;
 	}

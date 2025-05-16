@@ -5,6 +5,7 @@
 
 #include "patch_do_execve.h"
 #include "patch_avc_denied.h"
+#include "patch_filldir64.h"
 
 #include "3rdparty/find_mrs_register.h"
 #pragma comment(lib, "3rdparty/capstone-4.0.2-win64/capstone.lib")
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]) {
 	++argv;
 	--argc;
 
-	std::cout << "本工具用于生成SKRoot ARM64 Linux内核ROOT提权代码 V4" << std::endl << std::endl;
+	std::cout << "本工具用于生成SKRoot ARM64 Linux内核ROOT提权代码 V5" << std::endl << std::endl;
 
 #ifdef _DEBUG
 #else
@@ -53,7 +54,10 @@ int main(int argc, char* argv[]) {
 	}
 #endif
 
+#ifdef _DEBUG
+#else
 	const char* file_path = argv[0];
+#endif
 	if (!check_file_path(file_path)) {
 		std::cout << "Please enter the correct Linux kernel binary file path. " << std::endl;
 		std::cout << "For example, if it is boot.img, you need to first decompress boot.img and then extract the kernel file inside." << std::endl;
@@ -79,6 +83,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "_text:" << sym._text << std::endl;
 	std::cout << "_stext:" << sym._stext << std::endl;
 	std::cout << "die:" << sym.die << std::endl;
+	std::cout << "arm64_notify_die:" << sym.arm64_notify_die << std::endl;
 
 	std::cout << "__do_execve_file:" << sym.__do_execve_file << std::endl;
 	std::cout << "do_execveat_common:" << sym.do_execveat_common << std::endl;
@@ -87,8 +92,11 @@ int main(int argc, char* argv[]) {
 	std::cout << "do_execve:" << sym.do_execve << std::endl;
 
 	std::cout << "avc_denied:" << sym.avc_denied << std::endl;
+	std::cout << "filldir64:" << sym.filldir64 << std::endl;
+
 	std::cout << "revert_creds:" << sym.revert_creds << std::endl;
 	std::cout << "prctl_get_seccomp:" << sym.prctl_get_seccomp << std::endl;
+
 	std::cout << "__cfi_check:" << sym.__cfi_check << std::endl;
 	std::cout << "__cfi_check_fail:" << sym.__cfi_check_fail << std::endl;
 	std::cout << "__cfi_slowpath_diag:" << sym.__cfi_slowpath_diag << std::endl;
@@ -127,8 +135,7 @@ int main(int argc, char* argv[]) {
 	std::vector<size_t> v_hook_func_start_addr;
 	if (analyze_kernel.is_kernel_version_less("5.5.0")) {
 		v_hook_func_start_addr.push_back(0x300);
-	}
-	else if (analyze_kernel.is_kernel_version_less("6.0.0")) {
+	} else if (analyze_kernel.is_kernel_version_less("6.0.0")) {
 		if (sym.__cfi_check) {
 			size_t hook_start = patch_ret_cmd(file_buf, sym.__cfi_check, vec_patch_bytes_data);
 			v_hook_func_start_addr.push_back(hook_start);
@@ -138,6 +145,9 @@ int main(int argc, char* argv[]) {
 		if (sym.die) {
 			v_hook_func_start_addr.push_back(sym.die);
 		}
+	}
+	if (sym.arm64_notify_die) {
+		v_hook_func_start_addr.push_back(sym.arm64_notify_die);
 	}
 
 	if (v_hook_func_start_addr.size() == 0) {
@@ -179,15 +189,19 @@ int main(int argc, char* argv[]) {
 
 	PatchDoExecve patchDoExecve(file_buf, sym, analyze_kernel);
 	PatchAvcDenied patchAvcDenied(file_buf, sym, analyze_kernel);
+	PatchFilldir64 patchFilldir64(file_buf, sym, analyze_kernel);
 
-	size_t first_hook_func_addr = v_hook_func_start_addr[0];
+	size_t first_hook_func_addr = v_hook_func_start_addr.front();
+	v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
 	size_t next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_func_addr, v_cred, v_seccomp, vec_patch_bytes_data);
-	if (v_hook_func_start_addr.size() > 1) {
-		next_hook_func_addr = v_hook_func_start_addr[1];
+	next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, v_cred, vec_patch_bytes_data);
+
+	if (v_hook_func_start_addr.size()) {
+		next_hook_func_addr = v_hook_func_start_addr.front();
+		v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
 	}
-	if (next_hook_func_addr) {
-		next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
-	}
+	next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
+
 	if (next_hook_func_addr == 0) {
 		std::cout << "生成汇编代码失败！请检查输入的参数！" << std::endl;
 		system("pause");

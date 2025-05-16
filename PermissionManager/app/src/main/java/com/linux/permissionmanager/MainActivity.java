@@ -45,6 +45,7 @@ import com.linux.permissionmanager.Utils.ScreenInfoUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.net.URLDecoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,7 +57,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private String rootKey = "";
-    private String suBasePath = "";
+    private String suBasePath = "/data/vendor";
     private String lastInputCmd = "id";
     private SharedPreferences m_shareSave;
     private ProgressDialog m_loadingDlg = null;
@@ -69,7 +70,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        suBasePath = getApplicationInfo().nativeLibraryDir;
 
         m_shareSave = getSharedPreferences("zhcs", Context.MODE_PRIVATE);
         try {
@@ -368,9 +368,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 m_loadingDlg.setTitle("");
                 m_loadingDlg.setMessage("请现在手动启动APP [" + appItem.getShowName(MainActivity.this) + "]");
                 m_loadingDlg.show();
+
                 new Thread() {
                     public void run() {
                         String parasitePrecheckAppRet = parasitePrecheckApp(rootKey, appItem.getPackageName());
+
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 m_loadingDlg.cancel();
@@ -383,7 +385,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                     @Override
                                     public void handleMessage(@NonNull Message msg) {
                                         SelectFileRecyclerItem fileItem = (SelectFileRecyclerItem) msg.obj;
-                                        String parasiteImplantAppRet = parasiteImplantApp(rootKey, appItem.getPackageName(), fileItem.getFilePath());
+                                        String parasiteImplantAppRet = parasiteImplantApp(rootKey, appItem.getPackageName(), fileItem.getFilePath(), suBasePath);
                                         appendConsoleMsg(parasiteImplantAppRet);
                                         if(parasiteImplantAppRet.indexOf("parasiteImplantApp done.")!= -1) {
                                             showMsgDlg("提示",
@@ -776,7 +778,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public native String parasitePrecheckApp(String rootKey, String targetProcessCmdline);
 
-    public native String parasiteImplantApp(String rootKey, String targetProcessCmdline, String targetSoFullPath);
+    public native String parasiteImplantApp(String rootKey, String targetProcessCmdline, String targetSoFullPath, String targetSuFolderPath);
 
     public native String parasiteImplantSuEnv(String rootKey, String targetProcessCmdline, String targetSoFullPath);
 
