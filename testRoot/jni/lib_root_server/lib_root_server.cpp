@@ -399,7 +399,7 @@ std::string handle_inject_su_in_forever_app(const std::string & app_name, const 
     std::map<std::string, std::string> param;
     param["errcode"] = "0";
     
-	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(SU_BASE_PATH.c_str());
+	std::string su_hide_path = kernel_root::su::find_su_hide_folder_path(ROOT_KEY.c_str(), SU_BASE_PATH.c_str());
 	if (su_hide_path.empty()) {
         param["errcode"] = "-1";
         return convert_2_json_m("su_hide_path is empty");

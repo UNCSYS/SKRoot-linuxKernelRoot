@@ -35,7 +35,7 @@ std::string install_su(const char* str_root_key, const char* base_path, ssize_t&
 	}
 
 	//1.获取su_xxx隐藏目录
-	std::string _su_hide_folder_path = kernel_root::su::find_su_hide_folder_path(base_path);
+	std::string _su_hide_folder_path = kernel_root::su::find_su_hide_folder_path(str_root_key, base_path);
 	if (_su_hide_folder_path.empty()) {
 		//2.取不到，那就创建一个
 		_su_hide_folder_path = kernel_root::su::create_su_hide_folder(str_root_key, base_path);
@@ -92,12 +92,10 @@ ssize_t uninstall_su(const char* str_root_key, const char* base_path) {
 		return -521;
 	}
 	do {
-		//获取su_xxx隐藏目录
-		std::string _su_hide_path = kernel_root::su::find_su_hide_folder_path(base_path); //没有再看看子目录
+		std::string _su_hide_path = kernel_root::su::find_su_hide_folder_path(str_root_key, base_path);
 		if (_su_hide_path.empty()) {
 			break;
 		}
-		//取到了，再删
 		remove(std::string(_su_hide_path + std::string("/su")).c_str());
 	} while (1);
 	return kernel_root::su::del_su_hide_folder(str_root_key, base_path) ? -512 : 0;

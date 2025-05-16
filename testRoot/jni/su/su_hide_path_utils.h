@@ -74,9 +74,11 @@ static std::string __internal_find_su_hide_folder_path(
 	return folder;
 }
 
-static std::string find_su_hide_folder_path(
-	const char* base_path) {
-	return __internal_find_su_hide_folder_path(0, base_path);
+static std::string find_su_hide_folder_path(const char* str_root_key, const char* base_path) {
+	std::string before16 = std::string(str_root_key).substr(0, 16);
+	std::string file_path = base_path;
+	file_path += "/" + before16;
+	return __internal_find_su_hide_folder_path(0, file_path.c_str());
 }
 
 static bool __create_directory_if_not_exists(const std::string& dir_path) {
@@ -86,12 +88,7 @@ static bool __create_directory_if_not_exists(const std::string& dir_path) {
     return true;
 }
 
-static std::string create_su_hide_folder(const char* str_root_key,
-                                         const char* base_path) {
-
-    std::string before8 = std::string(str_root_key).substr(0, 8);
-    std::transform(before8.begin(), before8.end(), before8.begin(), [](unsigned char c) { return std::tolower(c); });
-
+static std::string create_su_hide_folder(const char* str_root_key, const char* base_path) {
     std::string before16 = std::string(str_root_key).substr(0, 16);
 
     char guid[RANDOM_GUID_LEN] = {0};
@@ -102,13 +99,8 @@ static std::string create_su_hide_folder(const char* str_root_key,
 	encodeRootKey = encryp_string(encodeRootKey, ENCRYKEY);
 
     std::string file_path = base_path;
-    file_path += "/" + before8;
-
-    // Check and create directories
-    if (!__create_directory_if_not_exists(file_path)) return {};
-    if (!set_file_allow_access_mode(file_path)) return {};
-
     file_path += "/" + before16;
+    // Check and create directories
     if (!__create_directory_if_not_exists(file_path)) return {};
     if (!set_file_allow_access_mode(file_path)) return {};
 
@@ -122,10 +114,9 @@ static std::string create_su_hide_folder(const char* str_root_key,
 static bool del_su_hide_folder(const char* str_root_key,
 										 const char* base_path) {
 
-	std::string before8 = std::string(str_root_key).substr(0, 8);
-	std::transform(before8.begin(), before8.end(), before8.begin(), [](unsigned char c) { return std::tolower(c); });
+	std::string before16 = std::string(str_root_key).substr(0, 16);
 	std::string file_path = base_path;
-	file_path += "/" + before8;
+	file_path += "/" + before16;
 	try {
 		std::filesystem::remove_all(file_path);
 	} catch (...) {
