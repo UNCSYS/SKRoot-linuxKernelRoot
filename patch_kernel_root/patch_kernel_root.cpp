@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
 	size_t first_hook_func_addr = v_hook_func_start_addr.front();
 	v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
 	size_t next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_func_addr, v_cred, v_seccomp, vec_patch_bytes_data);
-	next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, v_cred, vec_patch_bytes_data);
+	next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, vec_patch_bytes_data);
 
 	if (v_hook_func_start_addr.size()) {
 		next_hook_func_addr = v_hook_func_start_addr.front();
