@@ -1,7 +1,7 @@
 ﻿#include "patch_filldir64.h"
 #include "analyze/ARM_asm.h"
 PatchFilldir64::PatchFilldir64(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-	const AnalyzeKernel& analyze_kernel) : m_file_buf(file_buf), m_sym(sym), m_analyze_kernel(analyze_kernel) {
+	const AnalyzeKernel& analyze_kernel) : PatchBase(file_buf, sym, analyze_kernel) {
 
 }
 
@@ -46,7 +46,6 @@ size_t PatchFilldir64::patch_filldir64(size_t root_key_addr_offset, size_t hook_
 		return 0;
 	}
 	size_t nHookFuncSize = strBytes.length() / 2;
-
 	char hookOrigCmd[4] = { 0 };
 	memcpy(&hookOrigCmd, (void*)((size_t)&m_file_buf[0] + filldir64_addr), sizeof(hookOrigCmd));
 	std::string strHookOrigCmd = bytes_2_hex_str((const unsigned char*)hookOrigCmd, sizeof(hookOrigCmd));

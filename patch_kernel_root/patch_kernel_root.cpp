@@ -6,6 +6,7 @@
 #include "patch_do_execve.h"
 #include "patch_avc_denied.h"
 #include "patch_filldir64.h"
+#include "patch_freeze_task.h"
 
 #include "3rdparty/find_mrs_register.h"
 #pragma comment(lib, "3rdparty/capstone-4.0.2-win64/capstone.lib")
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]) {
 	++argv;
 	--argc;
 
-	std::cout << "本工具用于生成SKRoot ARM64 Linux内核ROOT提权代码 V5" << std::endl << std::endl;
+	std::cout << "本工具用于生成SKRoot ARM64 Linux内核ROOT提权代码 V6" << std::endl << std::endl;
 
 #ifdef _DEBUG
 #else
@@ -93,6 +94,7 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "avc_denied:" << sym.avc_denied << std::endl;
 	std::cout << "filldir64:" << sym.filldir64 << std::endl;
+	std::cout << "freeze_task:" << sym.freeze_task << std::endl;
 
 	std::cout << "revert_creds:" << sym.revert_creds << std::endl;
 	std::cout << "prctl_get_seccomp:" << sym.prctl_get_seccomp << std::endl;
@@ -190,17 +192,23 @@ int main(int argc, char* argv[]) {
 	PatchDoExecve patchDoExecve(file_buf, sym, analyze_kernel);
 	PatchAvcDenied patchAvcDenied(file_buf, sym, analyze_kernel);
 	PatchFilldir64 patchFilldir64(file_buf, sym, analyze_kernel);
+	PatchFreezeTask patchFreezeTask(file_buf, sym, analyze_kernel);
 
 	size_t first_hook_func_addr = v_hook_func_start_addr.front();
 	v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
 	size_t next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_func_addr, v_cred, v_seccomp, vec_patch_bytes_data);
-	next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, vec_patch_bytes_data);
+	if (sym.filldir64) {
+		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, vec_patch_bytes_data);
+	}
 
 	if (v_hook_func_start_addr.size()) {
 		next_hook_func_addr = v_hook_func_start_addr.front();
 		v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
 	}
 	next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
+	if(sym.freeze_task) {
+		next_hook_func_addr = patchFreezeTask.patch_freeze_task(next_hook_func_addr, v_cred, vec_patch_bytes_data);
+	}
 
 	if (next_hook_func_addr == 0) {
 		std::cout << "生成汇编代码失败！请检查输入的参数！" << std::endl;

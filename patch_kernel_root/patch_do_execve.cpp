@@ -2,7 +2,7 @@
 #include "patch_do_execve.h"
 #include "analyze/ARM_asm.h"
 PatchDoExecve::PatchDoExecve(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-	const AnalyzeKernel& analyze_kernel) : m_file_buf(file_buf), m_sym(sym), m_analyze_kernel(analyze_kernel) {
+	const AnalyzeKernel& analyze_kernel) : PatchBase(file_buf, sym, analyze_kernel) {
 
 }
 PatchDoExecve::~PatchDoExecve() {}
@@ -39,41 +39,8 @@ std::pair<size_t, size_t> PatchDoExecve::get_do_execve_param() {
 	return { do_execve_addr, do_execve_key_reg};
 }
 
-int PatchDoExecve::get_atomic_usage_len() {
-	int len = 8;
-	if (m_analyze_kernel.is_kernel_version_less("6.6.0")) {
-		len = 4;
-	}
-	return len;
-}
-
-int PatchDoExecve::get_securebits_padding() {
-	if (get_atomic_usage_len() == 8) {
-		return 4;
-	}
-	return 0;
-}
-
-std::string PatchDoExecve::get_cap_ability_max() {
-	std::string cap;
-	if (m_analyze_kernel.is_kernel_version_less("5.8.0")) {
-		cap = "0x3FFFFFFFFF";
-	} else if (m_analyze_kernel.is_kernel_version_less("5.9.0")) {
-		cap = "0xFFFFFFFFFF";
-	} else {
-		cap = "0x1FFFFFFFFFF";
-	}
-	return cap;
-}
-
 int PatchDoExecve::get_need_write_cap_cnt() {
-	int cnt = 0;
-	if (m_analyze_kernel.is_kernel_version_less("4.3.0")) {
-		cnt = 4;
-	} else {
-		cnt = 5;
-	}
-	return cnt;
+	return get_cap_cnt();
 }
 
 size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t hook_func_start_addr,
@@ -82,8 +49,8 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	std::vector<patch_bytes_data>& vec_out_patch_bytes_data) {
 
 	auto [do_execve_addr, do_execve_key_reg] = get_do_execve_param();
-	int atomic_usage_len = get_atomic_usage_len();
-	int securebits_padding = get_securebits_padding();
+	int atomic_usage_len = get_cred_atomic_usage_len();
+	int securebits_padding = get_cred_securebits_padding();
 	std::string cap_ability_max = get_cap_ability_max();
 	int cap_cnt = get_need_write_cap_cnt();
 

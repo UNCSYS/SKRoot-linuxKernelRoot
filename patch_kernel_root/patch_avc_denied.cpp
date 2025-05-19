@@ -1,7 +1,7 @@
 ﻿#include "patch_avc_denied.h"
 #include "analyze/ARM_asm.h"
 PatchAvcDenied::PatchAvcDenied(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-	const AnalyzeKernel& analyze_kernel) : m_file_buf(file_buf), m_sym(sym), m_analyze_kernel(analyze_kernel) {
+	const AnalyzeKernel& analyze_kernel) : PatchBase(file_buf, sym, analyze_kernel) {
 
 }
 
@@ -9,42 +9,10 @@ PatchAvcDenied::~PatchAvcDenied()
 {
 }
 
-int PatchAvcDenied::get_atomic_usage_len() {
-	int len = 8;
-	if (m_analyze_kernel.is_kernel_version_less("6.6.0")) {
-		len = 4;
-	}
-	return len;
-}
-
-int PatchAvcDenied::get_securebits_padding() {
-	if (get_atomic_usage_len() == 8) {
-		return 4;
-	}
-	return 0;
-}
-
-std::string PatchAvcDenied::get_cap_ability_max() {
-	std::string cap;
-	if (m_analyze_kernel.is_kernel_version_less("5.8.0")) {
-		cap = "0x3FFFFFFFFF";
-	}
-	else if (m_analyze_kernel.is_kernel_version_less("5.9.0")) {
-		cap = "0xFFFFFFFFFF";
-	}
-	else {
-		cap = "0x1FFFFFFFFFF";
-	}
-	return cap;
-}
-
-int PatchAvcDenied::get_need_write_cap_cnt() {
-	int cnt = 0;
-	if (m_analyze_kernel.is_kernel_version_less("4.3.0")) {
+int PatchAvcDenied::get_need_read_cap_cnt() {
+	int cnt = get_cap_cnt();
+	if (cnt < 5) {
 		cnt = 3;
-	}
-	else {
-		cnt = 5;
 	}
 	return cnt;
 }
@@ -53,10 +21,10 @@ int PatchAvcDenied::get_need_write_cap_cnt() {
 size_t PatchAvcDenied::patch_avc_denied(size_t hook_func_start_addr, const std::vector<size_t>& task_struct_offset_cred,
 	std::vector<patch_bytes_data>& vec_out_patch_bytes_data) {
 	size_t avc_denied_addr = m_sym.avc_denied;
-	int atomic_usage_len = get_atomic_usage_len();
-	int securebits_padding = get_securebits_padding();
+	int atomic_usage_len = get_cred_atomic_usage_len();
+	int securebits_padding = get_cred_securebits_padding();
 	std::string cap_ability_max = get_cap_ability_max();
-	int cap_cnt = get_need_write_cap_cnt();
+	int cap_cnt = get_need_read_cap_cnt();
 
 	size_t avc_denied_entry_hook_jump_back_addr = avc_denied_addr + 4;
 	auto next_asm_line_bytes_cnt = (task_struct_offset_cred.size() - 1) * 4;
@@ -64,7 +32,6 @@ size_t PatchAvcDenied::patch_avc_denied(size_t hook_func_start_addr, const std::
 	sstrAsm
 		<< "STP X7, X8, [sp, #-16]!" << std::endl
 		<< "STP X9, X10, [sp, #-16]!" << std::endl;
-
 	sstrAsm << "MRS X7, SP_EL0" << std::endl;
 	for (auto x = 0; x < task_struct_offset_cred.size(); x++) {
 		if (x != task_struct_offset_cred.size() - 1) {

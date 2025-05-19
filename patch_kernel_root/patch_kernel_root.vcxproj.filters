@@ -54,6 +54,12 @@
     <ClCompile Include="patch_filldir64.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="patch_base.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="patch_freeze_task.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="patch_do_execve.h">
@@ -96,6 +102,12 @@
       <Filter>analyze</Filter>
     </ClInclude>
     <ClInclude Include="patch_filldir64.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="patch_base.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="patch_freeze_task.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

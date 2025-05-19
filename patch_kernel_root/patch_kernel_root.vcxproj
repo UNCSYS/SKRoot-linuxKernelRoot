@@ -90,8 +90,10 @@
     <ClCompile Include="analyze\kernel_symbol_parser.cpp" />
     <ClCompile Include="analyze\kernel_version_parser.cpp" />
     <ClCompile Include="patch_avc_denied.cpp" />
+    <ClCompile Include="patch_base.cpp" />
     <ClCompile Include="patch_do_execve.cpp" />
     <ClCompile Include="patch_filldir64.cpp" />
+    <ClCompile Include="patch_freeze_task.cpp" />
     <ClCompile Include="patch_kernel_root.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -106,8 +108,10 @@
     <ClInclude Include="analyze\kernel_symbol_parser.h" />
     <ClInclude Include="analyze\kernel_version_parser.h" />
     <ClInclude Include="patch_avc_denied.h" />
+    <ClInclude Include="patch_base.h" />
     <ClInclude Include="patch_do_execve.h" />
     <ClInclude Include="patch_filldir64.h" />
+    <ClInclude Include="patch_freeze_task.h" />
     <ClInclude Include="patch_kernel_root.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
