@@ -40,6 +40,7 @@ bool check_file_path(const char* file_path) {
 	return true;
 }
 
+
 int main(int argc, char* argv[]) {
 	++argv;
 	--argc;
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "_text:" << sym._text << std::endl;
 	std::cout << "_stext:" << sym._stext << std::endl;
 	std::cout << "die:" << sym.die << std::endl;
-	std::cout << "arm64_notify_die:" << sym.arm64_notify_die << std::endl;
+	std::cout << "kmsg_dump_get_buffer:" << sym.kmsg_dump_get_buffer << std::endl;
 
 	std::cout << "__do_execve_file:" << sym.__do_execve_file << std::endl;
 	std::cout << "do_execveat_common:" << sym.do_execveat_common << std::endl;
@@ -134,25 +135,23 @@ int main(int argc, char* argv[]) {
 
 	std::vector<patch_bytes_data> vec_patch_bytes_data;
 
+	size_t first_hook_start_addr = 0;
 	std::vector<size_t> v_hook_func_start_addr;
 	if (analyze_kernel.is_kernel_version_less("5.5.0")) {
-		v_hook_func_start_addr.push_back(0x300);
+		first_hook_start_addr = 0x300;
 	} else if (analyze_kernel.is_kernel_version_less("6.0.0")) {
 		if (sym.__cfi_check) {
 			size_t hook_start = patch_ret_cmd(file_buf, sym.__cfi_check, vec_patch_bytes_data);
-			v_hook_func_start_addr.push_back(hook_start);
+			first_hook_start_addr = hook_start;
 		}
 	}
-	if (!v_hook_func_start_addr.size()) {
+	if (first_hook_start_addr == 0) {
 		if (sym.die) {
-			v_hook_func_start_addr.push_back(sym.die);
+			first_hook_start_addr = sym.die;
 		}
-	}
-	if (sym.arm64_notify_die) {
-		v_hook_func_start_addr.push_back(sym.arm64_notify_die);
 	}
 
-	if (v_hook_func_start_addr.size() == 0) {
+	if (first_hook_start_addr == 0) {
 		std::cout << "Failed to find hook start addr" << std::endl;
 		system("pause");
 		return 0;
@@ -194,21 +193,16 @@ int main(int argc, char* argv[]) {
 	PatchFilldir64 patchFilldir64(file_buf, sym, analyze_kernel);
 	PatchFreezeTask patchFreezeTask(file_buf, sym, analyze_kernel);
 
-	size_t first_hook_func_addr = v_hook_func_start_addr.front();
-	v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
-	size_t next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_func_addr, v_cred, v_seccomp, vec_patch_bytes_data);
+	size_t next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr, v_cred, v_seccomp, vec_patch_bytes_data);
 	if (sym.filldir64) {
-		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_func_addr, next_hook_func_addr, vec_patch_bytes_data);
+		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_start_addr, next_hook_func_addr, vec_patch_bytes_data);
 	}
 
-	if (v_hook_func_start_addr.size()) {
-		next_hook_func_addr = v_hook_func_start_addr.front();
-		v_hook_func_start_addr.erase(v_hook_func_start_addr.begin());
-	}
-	next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
-	if(sym.freeze_task) {
+	next_hook_func_addr = patchAvcDenied.patch_avc_denied(sym.kmsg_dump_get_buffer, v_cred, vec_patch_bytes_data);
+	if (sym.freeze_task) {
 		next_hook_func_addr = patchFreezeTask.patch_freeze_task(next_hook_func_addr, v_cred, vec_patch_bytes_data);
 	}
+
 
 	if (next_hook_func_addr == 0) {
 		std::cout << "生成汇编代码失败！请检查输入的参数！" << std::endl;
