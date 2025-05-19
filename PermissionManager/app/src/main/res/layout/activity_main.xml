@@ -38,77 +38,76 @@
             android:fadeScrollbars="false">
 
             <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            >
-
-            <TextView
-                android:layout_marginTop="5dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="菜单功能列表："
-                android:textColor="@color/black"
-                />
+                android:orientation="vertical"
+                >
 
-            <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/test_root_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="1.测试ROOT权限"
-                />
-
-            <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/run_root_cmd_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2.执行ROOT命令"
-                />
-
-            <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/run_init_process_cmd_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3.执行原生内核命令"
-                />
-
-
-            <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/su_env_install_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="4.安装部署su"
-                />
-
-            <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/su_env_inject_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="5.授权su到指定进程"
-                />
+                <TextView
+                    android:layout_marginTop="5dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="菜单功能列表："
+                    android:textColor="@color/black"
+                    />
 
                 <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/clean_su_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="6.完全卸载清理su"
-                />
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/test_root_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1.测试ROOT权限"
+                    />
 
                 <Button
-                android:layout_marginTop="5dp"
-                android:id="@+id/implant_app_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="7.寄生到目标APP"
-                />
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/run_root_cmd_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2.执行ROOT命令"
+                    />
 
-        </LinearLayout>
+                <Button
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/root_exec_process_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3.以ROOT运行程序"
+                    />
+
+                <Button
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/su_env_install_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="4.安装部署su"
+                    />
+
+                <Button
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/su_env_inject_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5.授权su到指定进程"
+                    />
+
+                <Button
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/clean_su_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="6.完全卸载清理su"
+                    />
+
+                <Button
+                    android:layout_marginTop="5dp"
+                    android:id="@+id/implant_app_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="7.寄生到目标APP"
+                    />
+
+            </LinearLayout>
 
         </ScrollView>
         <View

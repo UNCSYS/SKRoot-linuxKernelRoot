@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String rootKey = "";
     private String suBasePath = "/data/vendor";
     private String lastInputCmd = "id";
+    private String lastInputRootExecPath = "";
     private SharedPreferences m_shareSave;
     private ProgressDialog m_loadingDlg = null;
     private final String[] RECOMMEND_FILES = {"libc++_shared.so"};
@@ -80,12 +81,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             lastInputCmd = m_shareSave.getString("lastInputCmd", lastInputCmd);
         } catch (Exception e) {
         }
-
-        showUserInputRootKeyDlg();
+        try {
+            lastInputRootExecPath = m_shareSave.getString("lastInputRootExecPath", lastInputRootExecPath);
+        } catch (Exception e) {
+        }
+        showInputRootKeyDlg();
 
         Button test_root_btn = findViewById(R.id.test_root_btn);
         Button run_root_cmd_btn = findViewById(R.id.run_root_cmd_btn);
-        Button run_init_process_cmd_btn = findViewById(R.id.run_init_process_cmd_btn);
+        Button root_exec_process_btn = findViewById(R.id.root_exec_process_btn);
         Button su_env_install_btn = findViewById(R.id.su_env_install_btn);
         Button su_env_inject_btn = findViewById(R.id.su_env_inject_btn);
         Button clean_su_btn = findViewById(R.id.clean_su_btn);
@@ -95,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         test_root_btn.setOnClickListener(this);
         run_root_cmd_btn.setOnClickListener(this);
-        run_init_process_cmd_btn.setOnClickListener(this);
+        root_exec_process_btn.setOnClickListener(this);
         su_env_install_btn.setOnClickListener(this);
         su_env_inject_btn.setOnClickListener(this);
         clean_su_btn.setOnClickListener(this);
@@ -111,10 +115,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 appendConsoleMsg(testRoot(rootKey));
                 break;
             case R.id.run_root_cmd_btn:
-                showUserInputRootCmdDlg(false);
+                showInputRootCmdDlg();
                 break;
-            case R.id.run_init_process_cmd_btn:
-                showUserInputRootCmdDlg(true);
+            case R.id.root_exec_process_btn:
+                showInputRootExecProcessPathDlg();
                 break;
             case R.id.su_env_install_btn:
                 onClickSuEnvInstallBtn();
@@ -138,12 +142,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-    public void showUserInputRootKeyDlg() {
+    public void showInputRootKeyDlg() {
         Handler inputCallback = new Handler() {
             @Override
             public void handleMessage(@NonNull Message msg) {
-                String inputTxt = (String)msg.obj;
-                rootKey = inputTxt;
+                String text = (String)msg.obj;
+                rootKey = text;
                 SharedPreferences.Editor mEdit = m_shareSave.edit();
                 mEdit.putString("rootKey", rootKey);
                 mEdit.commit();
@@ -153,22 +157,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         showInputDlg(rootKey,"请输入ROOT权限的KEY", inputCallback);
     }
 
-    public void showUserInputRootCmdDlg(boolean isKernelCmd) {
+    public void showInputRootCmdDlg() {
         Handler inputCallback = new Handler() {
             @Override
             public void handleMessage(@NonNull Message msg) {
-                String inputTxt = (String)msg.obj;
-                lastInputCmd = inputTxt;
+                String text = (String)msg.obj;
+                lastInputCmd = text;
                 SharedPreferences.Editor mEdit = m_shareSave.edit();
                 mEdit.putString("lastInputCmd", lastInputCmd);
                 mEdit.commit();
-                appendConsoleMsg(inputTxt + "\n"
-                        + (isKernelCmd ?  runInit64ProcessCmd(rootKey, inputTxt) : runRootCmd(rootKey, inputTxt)));
+                appendConsoleMsg(text + "\n" + runRootCmd(rootKey, text));
                 super.handleMessage(msg);
             }
         };
-        
-        showInputDlg(lastInputCmd, isKernelCmd ? "输入ROOT命令" : "输入普通命令", inputCallback);
+        showInputDlg(lastInputCmd, "请输入ROOT命令", inputCallback);
+    }
+
+    public void showInputRootExecProcessPathDlg() {
+        Handler inputCallback = new Handler() {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                String text = (String)msg.obj;
+                lastInputRootExecPath = text;
+                SharedPreferences.Editor mEdit = m_shareSave.edit();
+                mEdit.putString("lastInputRootExecPath", lastInputRootExecPath);
+                mEdit.commit();
+                appendConsoleMsg(text + "\n" + rootExecProcessCmd(rootKey, text));
+                super.handleMessage(msg);
+            }
+        };
+        showInputDlg(lastInputRootExecPath, "请输入可执行程序的位置", inputCallback);
+        showMsgDlg("提示", "本功能是以ROOT身份直接运行程序，可避免产生su、sh等多余驻留后台进程，能最大程度上避免侦测", null);
     }
 
     public void showInputDlg(String defaultText, String title, Handler confirmCallback) {
@@ -187,7 +206,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 String text = inputTxt.getText().toString();
-                Message  msg = new Message();
+                Message msg = new Message();
                 msg.obj = text;
                 confirmCallback.sendMessage(msg);
             }
@@ -213,11 +232,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void onClickSuEnvInstallBtn() {
-        //1.安装su工具
         String insRet = installSu(rootKey, suBasePath);
         appendConsoleMsg(insRet);
         if(insRet.indexOf("installSu done.") != -1) {
-            //2.复制su的路径到剪贴板
             String suFullPath = getLastInstallSuFullPath();
             appendConsoleMsg("lastInstallSuFullPath:" + suFullPath);
             showMsgDlg("温馨提示",
@@ -764,7 +781,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public native String runRootCmd(String rootKey, String cmd);
 
-    public native String runInit64ProcessCmd(String rootKey, String cmd);
+    public native String rootExecProcessCmd(String rootKey, String cmd);
 
     public native String installSu(String rootKey, String basePath);
 

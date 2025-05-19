@@ -78,7 +78,7 @@ Java_com_linux_permissionmanager_MainActivity_runRootCmd(
 
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_linux_permissionmanager_MainActivity_runInit64ProcessCmd(
+Java_com_linux_permissionmanager_MainActivity_rootExecProcessCmd(
         JNIEnv* env,
         jobject /* this */,
         jstring rootKey,
@@ -91,12 +91,10 @@ Java_com_linux_permissionmanager_MainActivity_runInit64ProcessCmd(
     string strCmd= str1;
     env->ReleaseStringUTFChars(cmd, str1);
 
-
-    ssize_t  err;
-    string result = kernel_root::safe_run_init64_cmd_wrapper(strRootKey.c_str(), strCmd.c_str(), err);
+    ssize_t  err = kernel_root::safe_root_exec_process(strRootKey.c_str(), strCmd.c_str());
 
     stringstream sstr;
-    sstr << "runInit64Cmd err:" << err << ", result:" << result;
+    sstr << "runInit64Cmd err:" << err;
     return env->NewStringUTF(sstr.str().c_str());
 }
 
@@ -284,7 +282,7 @@ Java_com_linux_permissionmanager_MainActivity_parasitePrecheckApp(
     err = kernel_root::safe_parasite_precheck_app(strRootKey.c_str(), strTargetProcessCmdline.c_str(), so_path_list);
     if (err) {
         sstr << "parasite_precheck_app ret val:" << err << std::endl;
-        if(err == -9904) {
+        if(err == ERR_EXIST_32BIT) {
             sstr << "此目标APP为32位应用，无法寄生" << err << std::endl;
         }
         return env->NewStringUTF(sstr.str().c_str());
