@@ -14,13 +14,13 @@ namespace kernel_root {
 static ssize_t find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc = false)
 {
 	out.clear();
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -1000001;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 
 	DIR* dir = opendir("/proc");
 	if (dir == NULL) {
-		return -1000002;
+		return ERR_OPEN_DIR;
 	}
 	struct dirent * entry;
 	while ((entry = readdir(dir)) != NULL) {
@@ -84,7 +84,7 @@ static ssize_t find_all_cmdline_process(const char* str_root_key, const char* ta
 	}
 
 	closedir(dir);
-	return 0;
+	return ERR_NONE;
 }
 
 static ssize_t safe_find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc = false)
@@ -95,17 +95,17 @@ static ssize_t safe_find_all_cmdline_process(const char* str_root_key, const cha
 		write_errcode_from_child(finfo, ret);
 		write_set_int_from_child(finfo, out);
 		_exit(0);
-		return 0;
+		return ERR_NONE;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -1000011;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		out.clear();
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -1000012;
+			err = ERR_READ_CHILD_ERRCODE;
 		} else if(!read_set_int_from_child(finfo, out)) {
-			err = -1000013;
+			err = ERR_READ_CHILD_SET_ARR;
 		}
 	}
 	return err;
@@ -114,15 +114,15 @@ static ssize_t safe_find_all_cmdline_process(const char* str_root_key, const cha
 static ssize_t wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t & pid, bool compare_full_agrc = false)
 {
 	pid = 0;
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -1000021;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	clock_t start = clock();
 	while (1) {
 		sleep(0);
 		DIR*dir = opendir("/proc");
 		if (dir == NULL) {
-			return -1000022;
+			return ERR_OPEN_DIR;
 		}
 		struct dirent * entry;
 
@@ -213,16 +213,16 @@ static ssize_t safe_wait_and_find_cmdline_process(const char* str_root_key, cons
 		write_errcode_from_child(finfo, ret);
 		write_int_from_child(finfo, pid);
 		_exit(0);
-		return 0;
+		return ERR_NONE;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -1000031;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -1000032;
+			err = ERR_READ_CHILD_ERRCODE;
 		} else if(!read_int_from_child(finfo, pid)) {
-			err = -1000033;
+			err = ERR_READ_CHILD_INT;
 		}
 	}
 	return err;
@@ -236,12 +236,12 @@ static ssize_t get_all_cmdline_process(const char* str_root_key, std::map<pid_t,
 
 	struct dirent * entry;
 	pid_map.clear();
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -1000041;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	dir = opendir("/proc");
 	if (dir == NULL) {
-		return -1000042;
+		return ERR_OPEN_DIR;
 	}
 	while ((entry = readdir(dir)) != NULL) {
 		std::string all_cmdline;
@@ -310,16 +310,16 @@ static ssize_t safe_get_all_cmdline_process(const char* str_root_key, std::map<p
 		write_errcode_from_child(finfo, ret);
 		write_map_i_s_from_child(finfo, data);
 		_exit(0);
-		return 0;
+		return ERR_NONE;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -1000051;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -1000052;
+			err = ERR_READ_CHILD_ERRCODE;
 		} else if(!read_map_i_s_from_child(finfo, data)) {
-			err = -1000053;
+			err = ERR_READ_CHILD_MAP_I_S;
 		}
 		for(auto & item : data) {
 			pid_map[item.first] = item.second;

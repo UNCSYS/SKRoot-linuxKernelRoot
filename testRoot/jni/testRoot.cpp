@@ -32,8 +32,8 @@ void test_run_root_cmd(int argc, char* argv[]) {
 	printf("test_run_root_cmd result:%s\n", result.c_str());
 }
 
-void test_run_init64_cmd(int argc, char* argv[]) {
-	// 执行原生内核命令
+void test_root_exec_process(int argc, char* argv[]) {
+	// 以ROOT身份直接运行程序
 	std::stringstream sstrCmd;
 	for (int i = 0; i < argc; i++) {
 		sstrCmd << argv[i];
@@ -41,12 +41,10 @@ void test_run_init64_cmd(int argc, char* argv[]) {
 			sstrCmd << " ";
 		}
 	}
-	printf("test_run_init64_cmd(%s)\n", sstrCmd.str().c_str());
+	printf("test_root_exec_process(%s)\n", sstrCmd.str().c_str());
 
-	ssize_t err;
-	std::string result = kernel_root::run_init64_cmd_wrapper(ROOT_KEY, sstrCmd.str().c_str(), err);
+	ssize_t err = kernel_root::root_exec_process(ROOT_KEY, sstrCmd.str().c_str());
 	printf("run_init64_cmd_wrapper err:%zd\n", err);
-	printf("run_init64_cmd_wrapper result:%s\n", result.c_str());
 }
 
 void test_install_su_env() {
@@ -58,7 +56,7 @@ void test_install_su_env() {
 }
 
 void test_su_env_temp_inject(const char* target_pid_cmdline) {
-	if (kernel_root::get_root(ROOT_KEY) != 0) {
+	if (kernel_root::get_root(ROOT_KEY) != ERR_NONE) {
 		return;
 	}
 
@@ -89,7 +87,7 @@ void test_su_env_temp_inject(const char* target_pid_cmdline) {
 }
 
 void test_su_env_forever_inject(const char* target_pid_cmdline) {
-	if (kernel_root::get_root(ROOT_KEY) != 0) {
+	if (kernel_root::get_root(ROOT_KEY) != ERR_NONE) {
 		return;
 	}
 	// 1.获取su_xxx隐藏目录
@@ -112,7 +110,7 @@ void test_su_env_forever_inject(const char* target_pid_cmdline) {
 	err = kernel_root::parasite_precheck_app(ROOT_KEY, target_pid_cmdline, so_path_list);
 	if (err) {
 		printf("parasite_precheck_app error:%zd\n", err);
-		if(err == -9904) {
+		if(err == ERR_EXIST_32BIT) {
 			printf("此目标APP为32位应用，无法寄生\n");
 		}
 		return;
@@ -179,7 +177,7 @@ void test_clean_su_env() {
 }
 
 void test_implant_app(const char* target_pid_cmdline) {
-	if (kernel_root::get_root(ROOT_KEY) != 0) {
+	if (kernel_root::get_root(ROOT_KEY) != ERR_NONE) {
 		return;
 	}
 
@@ -204,7 +202,7 @@ void test_implant_app(const char* target_pid_cmdline) {
 	err = kernel_root::parasite_precheck_app(ROOT_KEY, target_pid_cmdline, so_path_list);
 	if (err) {
 		printf("parasite_precheck_app error:%zd\n", err);
-		if(err == -9904) {
+		if(err == ERR_EXIST_32BIT) {
 			printf("此目标APP为32位应用，无法寄生\n");
 		}
 		return;
@@ -279,8 +277,8 @@ int main(int argc, char* argv[]) {
 		"3. 执行ROOT命令\n"
 		"\tUsage: testRoot <root-key> cmd <command>\n\n"
 
-		"4. 执行原生内核命令\n"
-		"\tUsage: testRoot <root-key> init <command>\n\n"
+		"4. 以ROOT身份直接运行程序\n"
+		"\tUsage: testRoot <root-key> exec <file-path>\n\n"
 
 		"5. 安装部署su\n"
 		"\tUsage: testRoot <root-key> su\n\n"
@@ -319,7 +317,7 @@ int main(int argc, char* argv[]) {
 	std::map<std::string, std::function<void()>> command_map = {
 		{"get", []() { test_root(); }},
 		{"cmd", [argc, argv]() { test_run_root_cmd(argc - 1, argv + 1); }},
-		{"init", [argc, argv]() { test_run_init64_cmd(argc - 1, argv + 1); }},
+		{"exec", [argc, argv]() { test_root_exec_process(argc - 1, argv + 1); }},
 		{"su", []() { test_install_su_env(); }},
 		{"suTemp", [argv]() { test_su_env_temp_inject(argv[1]); }},
 		{"suForever", [argv]() { test_su_env_forever_inject(argv[1]); }},

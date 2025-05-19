@@ -40,12 +40,12 @@ namespace {
 
 ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline,
  std::map<std::string, app_so_status> &output_so_full_path) {
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -9901;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	std::string app_path = get_app_directory(target_pid_cmdline);
 	if(app_path.empty()) {
-		return -9902;
+		return ERR_APP_DIR;
 	}
 	std::set<pid_t> pout;
 	ssize_t err = kernel_root::find_all_cmdline_process(str_root_key, target_pid_cmdline, pout);
@@ -53,7 +53,7 @@ ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_c
 		return err;
 	}
 	if(pout.size() == 0) {
-		return -9903;
+		return ERR_FIND_CMDLINE_PROC;
 	}
 	output_so_full_path.clear();
 	bool exist_32bit = false;
@@ -99,9 +99,9 @@ ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_c
 		closedir(dir);
 	}
 	if(output_so_full_path.size() == 0 && exist_32bit) {
-	    return -9904;
+	    return ERR_EXIST_32BIT;
 	}
-	return 0;
+	return ERR_NONE;
 }
 
 //fork安全版本（可用于安卓APP直接调用）
@@ -116,16 +116,16 @@ ssize_t safe_parasite_precheck_app(const char* str_root_key, const char* target_
 		write_errcode_from_child(finfo, ret);
 		write_map_s_i_from_child(finfo, data);
 		_exit(0);
-		return 0;
+		return ERR_NONE;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -9911;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -9912;
+			err = ERR_READ_CHILD_ERRCODE;
 		} else if(!read_map_s_i_from_child(finfo, data)) {
-			err = -9913;
+			err = ERR_READ_CHILD_MAP_S_I;
 		}
 		for(auto & item : data) {
 			output_so_full_path[item.first] = static_cast<app_so_status>(item.second);
@@ -250,31 +250,31 @@ bool copy_selinux_context(const char* source_file_path, const char* target_file_
 
 ssize_t _internal_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline,
 	const char* original_so_full_path, const char* implant_so_full_path) {
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -9921;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	if(!std::filesystem::exists(original_so_full_path)) {
-		return -9922;
+		return ERR_NOT_EXIST_FILE;
 	}
 	if(!std::filesystem::exists(implant_so_full_path)) {
-		return -9923;
+		return ERR_NOT_EXIST_FILE;
 	}
 	if (chmod(implant_so_full_path, 0777)) {
-		return -9924;
+		return ERR_CHMOD;
 	}
 	if (!copy_selinux_context(original_so_full_path, implant_so_full_path)) {
-		return -9925;
+		return ERR_COPY_SELINUX;
 	}
 	// Because it is in the same directory as the parasitized so, all you need to do here is fill in the file name of so
 	std::string implant_so_name = get_name_from_path(implant_so_full_path);
 	if (!kernel_root::parasite_check_so_link(original_so_full_path, implant_so_name.c_str())) {
-		return 0; //have already been linked
+		return ERR_NONE; //have already been linked
 	}
 	if (kernel_root::parasite_start_link_so(original_so_full_path, implant_so_name.c_str())) {
-		return -9926;
+		return ERR_LINK_SO;
 	}
 	 if (kernel_root::parasite_check_so_link(original_so_full_path, implant_so_name.c_str())) {
-	 	return -9927;
+	 	return ERR_CHECK_LINK_SO;
 	 }
 	return 0;
 }
@@ -285,8 +285,8 @@ ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cm
 	char lib_name[20] = {0};
     generate_lib_name(lib_name);
 	std::string implant_so_full_path = folder_path  + "/" + lib_name;
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -9930;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	remove(implant_so_full_path.c_str());
 	write_root_server_so_file(str_root_key, implant_so_full_path.c_str(), su_folder_path);
@@ -299,14 +299,14 @@ ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_p
 		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, su_folder_path);
 		write_errcode_from_child(finfo, ret);
 		_exit(0);
-		return 0;
+		return ERR_NONE;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -9931;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -9932;
+			err = ERR_READ_CHILD_ERRCODE;
 		}
 	}
 	return err;
@@ -319,8 +319,8 @@ ssize_t parasite_implant_su_env(const char* str_root_key, const char* target_pid
 	char lib_name[20] = {0};
     generate_lib_name(lib_name);
 	std::string implant_so_full_path = folder_path  + "/" + lib_name;
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -9940;
+	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
+		return ERR_NO_ROOT;
 	}
 	remove(implant_so_full_path.c_str());
 	write_su_env_so_file(str_root_key, implant_so_full_path.c_str(), su_folder);
@@ -335,12 +335,12 @@ ssize_t safe_parasite_implant_su_env(const char* str_root_key, const char* targe
 		_exit(0);
 		return 0;
 	}
-	ssize_t err = 0;
+	ssize_t err = ERR_NONE;
 	if(!wait_fork_child_process(finfo)) {
-		err = -9941;
+		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
-			err = -9942;
+			err = ERR_READ_CHILD_ERRCODE;
 		}
 	}
 	return err;

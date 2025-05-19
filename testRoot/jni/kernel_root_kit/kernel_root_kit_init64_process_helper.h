@@ -15,7 +15,7 @@ static std::string run_init64_cmd_wrapper(
 	pid_t target_pid = 1;
 	std::string str_cmd_result = inject_process64_run_cmd_wrapper(str_root_key, target_pid,
 		cmd, out_err, false);
-	if(out_err != 0) {
+	if(out_err != ERR_NONE) {
 		return {};
 	}
 	return str_cmd_result;
@@ -29,9 +29,9 @@ static std::string safe_run_init64_cmd_wrapper(
 	std::string str_cmd_result;
 	if (cmd == NULL || strlen(cmd) == 0) { return {}; }
 
+	out_err = ERR_NONE;
 	fork_pipe_info finfo;
 	if (fork_pipe_child_process(finfo)) {
-		out_err = 0;
 		str_cmd_result = run_init64_cmd_wrapper(
 			str_root_key,
 			cmd,
@@ -41,15 +41,13 @@ static std::string safe_run_init64_cmd_wrapper(
 		_exit(0);
 		return {};
 	}
-
-	out_err = 0;
 	if (!wait_fork_child_process(finfo)) {
-		out_err = -64001;
+		out_err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if (!read_errcode_from_child(finfo, out_err)) {
-			out_err = -64002;
+			out_err = ERR_READ_CHILD_ERRCODE;
 		} else if (!read_string_from_child(finfo, str_cmd_result)) {
-			out_err = -64003;
+			out_err = ERR_READ_CHILD_STRING;
 		}
 	}
 	return str_cmd_result;

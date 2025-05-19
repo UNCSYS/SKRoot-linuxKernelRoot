@@ -18,16 +18,17 @@
 
 #include <sys/prctl.h>
 
+#include "kernel_root_kit_err_def.h"
 #include "kernel_root_kit_fork_helper.h"
 
 namespace kernel_root {
 	//获取ROOT权限，返回值为0则代表成功
 	static inline ssize_t get_root(const char* str_root_key) {
-		if(getuid() == 0) { return 0; }
-		if (str_root_key == NULL) { return -100; }
+		if(getuid() == 0) { return ERR_NONE; }
+		if (str_root_key == NULL) { return ERR_PARAM; }
 		syscall(__NR_execve, str_root_key, NULL, NULL);
-		if(getuid() != 0) { return -101; }
-        return 0;
+		if(getuid() != 0) { return ERR_NO_ROOT; }
+        return ERR_NONE;
 	}
 
 	//检查系统SELinux的是否为禁用状态
@@ -50,7 +51,7 @@ namespace kernel_root {
 	//执行root命令，返回值为0则代表成功
 	static std::string run_root_cmd(const char* str_root_key, const char* cmd, ssize_t & err) {
 		if (str_root_key == NULL || cmd == NULL || strlen(cmd) == 0) {
-			err = 0;
+			err = ERR_PARAM;
 			return {};
 		}
 		//把错误信息也打出来
@@ -60,15 +61,15 @@ namespace kernel_root {
 		std::string result;
 		fork_pipe_info finfo;
 		if(fork_pipe_child_process(finfo)) {
-			err = 0;
+			err = ERR_NONE;
 			do {
-				if (get_root(str_root_key) != 0) {
-					err = -110;
+				if (get_root(str_root_key) != ERR_NONE) {
+					err = ERR_NO_ROOT;
 					break;
 				}
 				FILE * fp = popen(cmd_add_err_info.c_str(), "r");
 				if(!fp) {
-					err = -111;
+					err = ERR_POPEN;
 					break;
 				}
 				int pip = fileno(fp);
@@ -89,16 +90,16 @@ namespace kernel_root {
 			write_errcode_from_child(finfo, err);
 			write_string_from_child(finfo, result);
 			_exit(0);
-			return 0;
+			return {};
 		}
-		err = 0;
+		err = ERR_NONE;
 		if(!wait_fork_child_process(finfo)) {
-			err = -112;
+			err = ERR_WAIT_FORK_CHILD;
 		} else {
 			if(!read_errcode_from_child(finfo, err)) {
-				err = -113;
+				err = ERR_READ_CHILD_ERRCODE;
 			} else if(!read_string_from_child(finfo, result)) {
-				err = -114;
+				err = ERR_READ_CHILD_STRING;
 			}
 		}
 		return result;

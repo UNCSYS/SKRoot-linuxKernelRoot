@@ -166,7 +166,7 @@ std::string handle_test_root() {
 }
 
 std::string handle_run_root_cmd(const std::string & cmd) {
-    ssize_t err = 0;
+    ssize_t err = ERR_NONE;
     std::string result = kernel_root::run_root_cmd(ROOT_KEY.c_str(), cmd.c_str(), err);
 
     std::stringstream sstr;
@@ -174,22 +174,21 @@ std::string handle_run_root_cmd(const std::string & cmd) {
     return convert_2_json(sstr.str());
 }
 
-std::string handle_run_kernel_cmd(const std::string & cmd) {
-    ssize_t err = 0;
-    std::string result = kernel_root::run_init64_cmd_wrapper(ROOT_KEY.c_str(), cmd.c_str(), err);
+std::string handle_root_exec_process(const std::string & path) {
+    ssize_t err = kernel_root::root_exec_process(ROOT_KEY.c_str(), path.c_str());
 
     std::stringstream sstr;
-    sstr << "run_init64_cmd_wrapper err:" << err << ", result:" << result;
+    sstr << "root_exec_processs err:" << err;
     return convert_2_json(sstr.str());
 }
 
 std::string handle_install_su() {
-    ssize_t err = 0;
+    ssize_t err = ERR_NONE;
     std::string su_hide_full_path = kernel_root::install_su(ROOT_KEY.c_str(), SU_BASE_PATH.c_str(), err);
     std::stringstream sstr;
     sstr << "install su err:" << err<<", su_hide_full_path:" << su_hide_full_path << std::endl;
     
-    if (err == 0) {
+    if (err == ERR_NONE) {
         sstr << "installSu done."<< std::endl;
     }
     std::map<std::string, std::string> param;
@@ -203,7 +202,7 @@ std::string handle_uninstall_su() {
     ssize_t err = kernel_root::safe_uninstall_su(ROOT_KEY.c_str(), SU_BASE_PATH.c_str());
     std::stringstream sstr;
     sstr << "uninstallSu err:" << err << std::endl;
-    if (err != 0) {
+    if (err != ERR_NONE) {
         return convert_2_json(sstr.str());
     }
     sstr << "uninstallSu done.";
@@ -225,7 +224,7 @@ std::string handle_get_app_list(bool isShowSystemApp, bool isShowThirtyApp, bool
     } else if(isShowThirtyApp) {
         cmd = "pm list packages -3";
     }
-    ssize_t err = 0;
+    ssize_t err = ERR_NONE;
     std::string packages = kernel_root::run_root_cmd(ROOT_KEY.c_str(), cmd.c_str(), err);
     if(err != 0) {
         return convert_2_json_v(packageNames);
@@ -353,7 +352,7 @@ std::string handle_get_precheck_app_file_list(const std::string & app_name) {
 	err = kernel_root::parasite_precheck_app(ROOT_KEY.c_str(), app_name.c_str(), so_path_list);
     if (err) {
         errmsg << "parasite_precheck_app error:" << err << std::endl;
-		if(err == -9904) {
+		if(err == ERR_EXIST_32BIT) {
             errmsg << "此目标APP为32位应用，无法寄生" << err << std::endl;
 		}
         return convert_2_json_m(errmsg.str());
@@ -493,8 +492,8 @@ std::string handle_post_action(std::string_view post_data) {
     if(type == "runRootCmd") {
         return handle_run_root_cmd(cmd);
     }
-    if(type == "runKernelCmd") {
-        return handle_run_kernel_cmd(cmd);
+    if(type == "rootExecProc") {
+        return handle_root_exec_process(cmd);
     }
     if(type == "installSu") {
         return handle_install_su();
@@ -627,7 +626,7 @@ int server_main() {
 }
 
 void open_server_url() {
-    ssize_t err = 0;
+    ssize_t err = ERR_NONE;
     std::string openUrlCmd = "am start -a android.intent.action.VIEW -d http://127.0.0.1:" + std::to_string(PORT);
     kernel_root::run_root_cmd(ROOT_KEY.c_str(), openUrlCmd.c_str(), err);
 }

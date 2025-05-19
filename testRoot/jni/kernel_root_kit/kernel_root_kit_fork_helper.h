@@ -11,6 +11,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "kernel_root_kit_err_def.h"
+
 #define BUF_SIZE 4096
 namespace kernel_root {
     class fork_base_info {
@@ -74,6 +76,8 @@ static bool fork_pipe_child_process(fork_pipe_info & finfo) {
         close(fd_child_to_parent[0]); // Close unused read end
         finfo.fd_read_parent = fd_parent_to_child[0]; // Set up child read end
         finfo.fd_write_child = fd_child_to_parent[1]; // Set up child write end
+        int flags = fcntl(finfo.fd_write_child, F_GETFD, 0);
+        fcntl(finfo.fd_write_child, F_SETFD, flags | FD_CLOEXEC);
         return true;
     } else { // Parent process
         close(fd_parent_to_child[0]); // Close unused read end
@@ -140,9 +144,13 @@ static bool write_errcode_from_child(const fork_pipe_info & finfo, ssize_t errCo
 }
 
 static bool read_errcode_from_child(const fork_pipe_info & finfo, ssize_t & errCode) {
-	if(read(finfo.fd_read_child, (void*)&errCode, sizeof(errCode))==sizeof(errCode)) {
-		return true;
-	}
+    ssize_t n = read(finfo.fd_read_child, &errCode, sizeof(errCode));
+    if (n == sizeof(errCode)) {
+        return true;
+    } else if (n == 0) {
+        errCode = ERR_READ_EOF;
+        return false;
+    }
 	return false;
 }
 

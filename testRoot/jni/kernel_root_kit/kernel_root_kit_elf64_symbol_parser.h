@@ -12,6 +12,8 @@
 #include <map>
 #include <vector>
 #include <errno.h>
+
+#include "kernel_root_kit_err_def.h"
 namespace kernel_root {
 	
 struct dl_iterate_callback_data {
@@ -48,12 +50,12 @@ static int read_elf64_file_symbol_addr(const char* so_path, std::map<std::string
 
 	fd = open(so_path, O_RDONLY);
 	if (fd < 0) {
-		return -2000001;
+		return ERR_OPEN_FILE;
 	}
 	lseek(fd, 0L, SEEK_SET);
 	if (!is_elf64_file(fd)) {
 		close(fd);
-		return -2000002;
+		return ERR_NOT_ELF64_FILE;
 	}
 	size = lseek(fd, 0L, SEEK_END);
 	mod = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -91,14 +93,14 @@ static int read_elf64_file_symbol_addr(const char* so_path, std::map<std::string
 	}
 	munmap(mod, size);
 	close(fd);
-	return 0;
+	return ERR_NONE;
 }
 
 int find_mem_elf64_symbol_address(const char *so_path, std::map<std::string, uint64_t>& func_symbol_map) {
     void* p_so_addr = get_module_base(-1, so_path);
 	void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
 	if (!p_so || !p_so_addr) {
-		return -3000001;
+		return ERR_DLOPEN_FILE;
 	}
 	for(auto iter = func_symbol_map.begin(); iter != func_symbol_map.end(); iter++) {
 		void* pfunc = dlsym(p_so, iter->first.c_str());
@@ -107,7 +109,7 @@ int find_mem_elf64_symbol_address(const char *so_path, std::map<std::string, uin
 		}
 	}
 	dlclose(p_so);
-	return 0;
+	return ERR_NONE;
 }
 
 }

@@ -144,44 +144,36 @@ int su_client_main(int argc, char* argv[]) {
 	std::string root_key = get_root_key();
 	SU_PRINTF("root_key:%s\n", root_key.c_str());
 
-	if (fork() == 0) {
-		kernel_root::get_root(root_key.c_str());
-		SU_PRINTF("current uid:%d\n", getuid());
+	kernel_root::get_root(root_key.c_str());
+	SU_PRINTF("current uid:%d\n", getuid());
 
-		/* username or uid */
-		if (optind < argc) {
-			struct passwd* pw;
-			pw = getpwnam(argv[optind]);
-			if (pw) {
-				su_req.uid = pw->pw_uid;
-			} else {
-				su_req.uid = parse_int(argv[optind]);
-			}
-			optind++;
-		}
-		struct passwd* pw = getpwuid(su_req.uid);
+	if (optind < argc) {
+		struct passwd* pw;
+		pw = getpwnam(argv[optind]);
 		if (pw) {
-			setenv("HOME", pw->pw_dir, 1);
-			setenv("USER", pw->pw_name, 1);
-			setenv("LOGNAME", pw->pw_name, 1);
-			setenv("SHELL", su_req.shell.data(), 1);
+			su_req.uid = pw->pw_uid;
+		} else {
+			su_req.uid = parse_int(argv[optind]);
 		}
-
-		const char* new_argv[4] = { nullptr };
-		new_argv[0] = su_req.login ? "-" : su_req.shell.data();
-
-		if (!su_req.command.empty()) {
-			new_argv[1] = "-c";
-			new_argv[2] = su_req.command.data();
-		}
-
-		// If you need it, you can unblock this line of code yourself
-		//set_identity(su_req.uid);
-
-		execvp(su_req.shell.data(), (char**)new_argv);
-	} else {
-		wait(NULL);
+		optind++;
 	}
+	struct passwd* pw = getpwuid(su_req.uid);
+	if (pw) {
+		setenv("HOME", pw->pw_dir, 1);
+		setenv("USER", pw->pw_name, 1);
+		setenv("LOGNAME", pw->pw_name, 1);
+		setenv("SHELL", su_req.shell.data(), 1);
+	}
+
+	const char* new_argv[] = {
+		su_req.login ? "-" : su_req.shell.data(),
+		!su_req.command.empty() ? "-c" : nullptr,
+		!su_req.command.empty() ? su_req.command.c_str() : nullptr,
+		nullptr
+	};
+	// If you need it, you can unblock this line of code yourself
+	//set_identity(su_req.uid);
+	execvp(su_req.shell.c_str(), (char* const*)new_argv);
 	exit(0);
 	return 0;
 }

@@ -276,6 +276,7 @@ const char* HTML_CONTENT = R"***(
     <script>
 		let g_lastSuFullPath = '';
 		let g_lastInputCmd = 'id';
+		let g_lastRootExecPath = '';
 		const g_userName = generateRandomString(32);
 		function generateRandomString(length) {
 			let result = '';
@@ -452,7 +453,7 @@ const char* HTML_CONTENT = R"***(
 		}
 
         function runRootCmdBtnClick() {
-			var shell = prompt("请输入要执行的ROOT命令:", g_lastInputCmd);
+			var shell = prompt("请输入ROOT命令:", g_lastInputCmd);
 			if(!shell || !shell.length) {
 				return;
 			}
@@ -470,16 +471,16 @@ const char* HTML_CONTENT = R"***(
 			});
 		}
 
-        function runKernelCmdBtnClick() {
-			var shell = prompt("请输入要执行的原生内核命令:", g_lastInputCmd);
-			if(!shell || !shell.length) {
+        function rootExecProcBtnClick() {
+			var path = prompt("请输入可执行程序的位置:", g_lastRootExecPath);
+			if(!path || !path.length) {
 				return;
 			}
 			let jsonData = {
-				type: 'runKernelCmd',
-				cmd: shell
+				type: 'rootExecProc',
+				cmd: path
 			};
-			g_lastInputCmd = shell;
+			g_lastRootExecPath = path;
 			sendJsonToServer(jsonData)
 			.then(data => {
 				appendConsole(data.content);
@@ -762,7 +763,7 @@ const char* HTML_CONTENT = R"***(
 			<span class="menu-head-text">菜单功能列表：</span>
 			<button class="btn" onclick="testRootBtnClick()">1.测试ROOT权限</button>
 			<button class="btn" onclick="runRootCmdBtnClick()">2.执行ROOT命令</button>
-			<button class="btn" onclick="runKernelCmdBtnClick()">3.执行原生内核命令</button>
+			<button class="btn" onclick="rootExecProcBtnClick()">3.以ROOT运行程序</button>
 			<button class="btn" onclick="installSuBtnClick()">4.安装部署su</button>
 			<button class="btn" onclick="injectSuBtnClick()">5.注入su到指定进程</button>
 			<button class="btn" onclick="uninstallSuBtnClick()">6.完全卸载清理su</button>
