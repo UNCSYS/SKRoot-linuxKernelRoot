@@ -7,7 +7,8 @@ struct KernelSymbolOffset {
 	size_t _text = 0;
 	size_t _stext = 0;
 	size_t die = 0;
-	size_t kmsg_dump_get_buffer = 0;
+	size_t arm64_notify_die = 0;
+	size_t kernel_restart = 0;
 
 	size_t __do_execve_file = 0;
 	size_t do_execveat_common = 0;

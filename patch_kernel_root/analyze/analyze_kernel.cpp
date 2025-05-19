@@ -33,7 +33,8 @@ bool AnalyzeKernel::find_symbol_offset() {
 	m_kernel_sym_offset._stext = m_kernel_sym_parser.kallsyms_lookup_name("_stext");
 
 	m_kernel_sym_offset.die = m_kernel_sym_parser.kallsyms_lookup_name("die");
-	m_kernel_sym_offset.kmsg_dump_get_buffer = m_kernel_sym_parser.kallsyms_lookup_name("kmsg_dump_get_buffer");
+	m_kernel_sym_offset.arm64_notify_die = m_kernel_sym_parser.kallsyms_lookup_name("arm64_notify_die");
+	m_kernel_sym_offset.kernel_restart = m_kernel_sym_parser.kallsyms_lookup_name("kernel_restart");
 
 	m_kernel_sym_offset.__do_execve_file = m_kernel_sym_parser.kallsyms_lookup_name("__do_execve_file");
 
@@ -69,6 +70,10 @@ bool AnalyzeKernel::find_symbol_offset() {
 	m_kernel_sym_offset.__ubsan_handle_cfi_check_fail_abort = m_kernel_sym_parser.kallsyms_lookup_name("__ubsan_handle_cfi_check_fail_abort");
 	m_kernel_sym_offset.__ubsan_handle_cfi_check_fail = m_kernel_sym_parser.kallsyms_lookup_name("__ubsan_handle_cfi_check_fail");
 	m_kernel_sym_offset.report_cfi_failure = m_kernel_sym_parser.kallsyms_lookup_name("report_cfi_failure");
-	return (m_kernel_sym_offset.do_execve || m_kernel_sym_offset.do_execveat || m_kernel_sym_offset.do_execveat_common
-		) && m_kernel_sym_offset.avc_denied && m_kernel_sym_offset.kmsg_dump_get_buffer && m_kernel_sym_offset.revert_creds && m_kernel_sym_offset.prctl_get_seccomp;
+	return (m_kernel_sym_offset.do_execve || m_kernel_sym_offset.do_execveat || m_kernel_sym_offset.do_execveat_common) 
+		&& m_kernel_sym_offset.avc_denied
+		&& m_kernel_sym_offset.filldir64
+		&& m_kernel_sym_offset.freeze_task
+		&& m_kernel_sym_offset.revert_creds
+		&& m_kernel_sym_offset.prctl_get_seccomp;
 }
