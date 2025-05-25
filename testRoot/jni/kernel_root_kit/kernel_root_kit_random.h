@@ -20,7 +20,7 @@ static void rand_str_small(char* dest, int n) {
 
 static void generate_lib_name(char* dest) {
     int len = rand() % 4 + 3;
-    sprintf(dest, "lib_");
+    sprintf(dest, "lib");
     rand_str_small(dest + 4, len);
     strcat(dest, ".so");
 }

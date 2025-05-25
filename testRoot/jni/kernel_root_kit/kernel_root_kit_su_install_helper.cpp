@@ -15,11 +15,9 @@
 namespace kernel_root {
 
 bool write_su_exec(const char* target_path) {
-    std::string str_target_path = target_path;
-
-    std::ofstream file(str_target_path, std::ios::binary | std::ios::out);
+    std::ofstream file(std::string(target_path), std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-        ROOT_PRINTF("Could not open file %s.\n", str_target_path.c_str());
+        ROOT_PRINTF("Could not open file %s.\n", target_path);
         return false;
     }
     file.write(reinterpret_cast<char*>(su_exec_data), su_exec_file_size);

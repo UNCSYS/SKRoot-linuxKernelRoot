@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include "lib_su_env_inline.h"
+#include "utils/randomData.h"
 
 void so_entry() {
     char k_path[] = {'P', 'A', 'T', 'H', '\0'};

@@ -33,7 +33,7 @@ void test_run_root_cmd(int argc, char* argv[]) {
 }
 
 void test_root_exec_process(int argc, char* argv[]) {
-	// 以ROOT身份直接运行程序
+	// 以ROOT身份直接执行程序
 	std::stringstream sstrCmd;
 	for (int i = 0; i < argc; i++) {
 		sstrCmd << argv[i];
@@ -277,7 +277,7 @@ int main(int argc, char* argv[]) {
 		"3. 执行ROOT命令\n"
 		"\tUsage: testRoot <root-key> cmd <command>\n\n"
 
-		"4. 以ROOT身份直接运行程序\n"
+		"4. 以ROOT身份直接执行程序\n"
 		"\tUsage: testRoot <root-key> exec <file-path>\n\n"
 
 		"5. 安装部署su\n"

@@ -24,10 +24,11 @@ add_library( # Sets the name of the library.
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_process64_inject.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_ptrace_arm64_utils.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_su_install_helper.cpp
+        ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_upx_helper.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_parasite_app.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_parasite_patch_elf.cpp
         cJSON.cpp
-        root.cpp)
+        native-lib.cpp)
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by

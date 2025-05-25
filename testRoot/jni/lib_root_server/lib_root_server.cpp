@@ -14,10 +14,12 @@
 
 #include "lib_root_server.h"
 #include "lib_root_server_inline.h"
-#include "../testRoot.h"
-#include "../kernel_root_kit/kernel_root_kit_umbrella.h"
-#include "../utils/stringUtils.h"
-#include "../utils/jsonUtils.h"
+#include "index_html_gz_data.h"
+#include "testRoot.h"
+#include "kernel_root_kit/kernel_root_kit_umbrella.h"
+#include "utils/stringUtils.h"
+#include "utils/jsonUtils.h"
+#include "utils/randomData.h"
 
 namespace {
 constexpr const char* recommend_files[] = {"libc++_shared.so"};
@@ -57,30 +59,6 @@ private:
     std::string m_consoleMsg;
     std::mutex m_msgLock;
 } g_inject_su_info;
-
-
-bool try_lock_file(const char* path) {
-    int fd = open(path, O_CREAT, 0666);
-    if (fd == -1) {
-        //perror("Unable to open the lock file");
-        return false;
-    }
-
-    if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-        //perror("Another instance is running");
-        close(fd);  // Don't forget to close the file descriptor
-        return false;
-    }
-
-    // You might want to store the file descriptor somewhere if you plan to release the lock later.
-    // For now, we are not closing it, which means the lock will be held until the process terminates.
-    return true;
-}
-
-bool is_already_running() {
-    std::string lock_file_path = const_cast<char*>(static_inline_lock_file_path);
-    return !try_lock_file(lock_file_path.c_str());
-}
 
 std::string convert_2_json(const std::string & str, const std::map<std::string, std::string> & appendParam = {}) {
     std::string strJson;
@@ -146,11 +124,10 @@ std::string convert_2_json_v(const std::vector<std::string> &v, const std::map<s
     return strJson;
 }
 
-std::string handle_index() {
-    std::string strIndexHtml = HTML_CONTENT;
-    replaceAllOccurrences(strIndexHtml, "11945efd3337ff4cd1168d98bc108cae", std::to_string(PORT));
-    replaceAllOccurrences(strIndexHtml, "6a181c88b7d5b51ff84fb344acbcee86", POST_KEY);
-    return strIndexHtml;
+std::tuple<std::string, bool> handle_index() {
+	std::string gzip_html;
+	gzip_html.assign(reinterpret_cast<const char*>(lib_root_server::index_html_gz_data), lib_root_server::index_html_gz_size);
+	return { gzip_html, true };
 }
 
 std::string handle_heartbeat(const std::string & userName) {
@@ -538,26 +515,25 @@ void handle_client(int client_socket) {
     if (bytes_read > 0) {
      	std::string request(buffer, bytes_read);
         std::string response_body;
+        bool append_gzip = false;
         if (request.length() > 3 && request.substr(0, 3) == "GET") {
             g_firstRequest = true;
-            response_body = handle_index();
+            std::tie(response_body, append_gzip) = handle_index();
         } else if (request.length() > 4 && request.substr(0, 4) == "POST") {
-			if (request.find(POST_KEY) != std::string::npos) {
-                g_firstRequest = true;
-                response_body = handle_post_action(request);
-            }
+			g_firstRequest = true;
+            response_body = handle_post_action(request);
         }
 		
 		if(response_body.length()) {
             // Note: I'm assuming that the first part of each "handle_" function result
             // is the header, and the rest is the body. This could be modified based on actual structure.
-            std::string response_header = GetHttpHead_200(response_body.length());
+            std::string response_header = GetHttpHead_200(response_body.length(), append_gzip);
 
             // Send header
-            send(client_socket, response_header.c_str(), response_header.size(), 0);
+            send(client_socket, response_header.c_str(), response_header.length(), 0);
 
             // Send body
-            send(client_socket, response_body.c_str(), response_body.size(), 0);
+            send(client_socket, response_body.c_str(), response_body.length(), 0);
 		}
     }
 
@@ -566,8 +542,8 @@ void handle_client(int client_socket) {
 }
 
 void checkTimeoutActive() {
-    //首次请求必须在10秒内发起
-    for(int i = 0; i < 10; i++) {
+    //首次请求必须在5秒内发起
+    for(int i = 0; i < 5; i++) {
         sleep(1);
         if(g_firstRequest) {
             break;
@@ -576,8 +552,8 @@ void checkTimeoutActive() {
     if(!g_firstRequest) {
         _exit(0); //安全结束服务器
     }
-    // 20秒内无心跳自动退出
-    for(int i = 0; i < 20; i++) {
+    // 10秒内无心跳自动退出
+    for(int i = 0; i < 10; i++) {
         sleep(1);
         if(g_heartbeat) {
             g_heartbeat = false;
@@ -625,20 +601,49 @@ int server_main() {
 	return 0;
 }
 
-void open_server_url() {
+void open_server_url(int port) {
     ssize_t err = ERR_NONE;
-    std::string openUrlCmd = "am start -a android.intent.action.VIEW -d http://127.0.0.1:" + std::to_string(PORT);
-    kernel_root::run_root_cmd(ROOT_KEY.c_str(), openUrlCmd.c_str(), err);
+    std::string cmd = "am start -a android.intent.action.VIEW -d http://127.0.0.1:" + std::to_string(port);
+    FILE * fp = popen(cmd.c_str(), "r");
+    if(fp) {
+        pclose(fp);
+    }
 }
 
-void fork_child_main() {
-	if (kernel_root::get_root(ROOT_KEY.c_str())) {
-		return;
-	}
-    writeToLog("fork_child_main server enter");
-    if(is_already_running()) { return; }
-    writeToLog("fork_child_main server main");
+void guide_server_main() {
+    writeToLog("guide_server_main server enter");
 	server_main();
+}
+
+void timeout_exit_process(int timeout_ms) {
+    std::thread([timeout_ms]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
+        _exit(0);
+    }).detach();
+}
+
+bool try_connect(uint16_t port) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        writeToLog("try_connect_and_open: socket failed.");
+        return false;
+    }
+    sockaddr_in addr{};
+    addr.sin_family      = AF_INET;
+    addr.sin_port        = htons(port);
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    int c = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+    close(sock);
+    return c == 0;
+}
+
+static inline void printf_random_data() {
+    if(time(NULL) == 0) {
+        for(size_t i = 0; i < random_bin::random_size; i++) {
+            const char* c = reinterpret_cast<const char*>(random_bin::random_data);
+            std::cout << c[i];
+        }
+    }
 }
 
 static bool isLoaded = false;
@@ -651,13 +656,20 @@ extern "C" void __attribute__((constructor)) root_server_entry() {
 
     ROOT_KEY = const_cast<char*>(static_inline_root_key);
     SU_BASE_PATH = const_cast<char*>(static_inline_su_base);
+    if (kernel_root::get_root(ROOT_KEY.c_str()) != ERR_NONE) {
+		return;
+	}
 
     {
         pid_t pid = fork();
         if (pid == 0) {
-            sleep(1); // wait app init
-            open_server_url();
+            sleep(1);
+            timeout_exit_process(2000);
+            if(try_connect(PORT)) {
+                open_server_url(PORT);
+            }
             _exit(0);
+            printf_random_data();
         }   
     }
 
@@ -665,8 +677,9 @@ extern "C" void __attribute__((constructor)) root_server_entry() {
         pid_t pid = fork();
         if (pid == 0) {
             writeToLog("listening");
-            fork_child_main();
+            guide_server_main();
             _exit(0);
+            printf_random_data();
         }    
     }
 

@@ -40,6 +40,7 @@ import com.linux.permissionmanager.Adapter.SelectFileRecyclerAdapter;
 import com.linux.permissionmanager.Model.PopupWindowOnTouchClose;
 import com.linux.permissionmanager.Model.SelectAppRecyclerItem;
 import com.linux.permissionmanager.Model.SelectFileRecyclerItem;
+import com.linux.permissionmanager.Utils.DialogUtils;
 import com.linux.permissionmanager.Utils.ScreenInfoUtils;
 
 import org.json.JSONArray;
@@ -154,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        showInputDlg(rootKey,"请输入ROOT权限的KEY", inputCallback);
+        DialogUtils.showInputDlg(this, rootKey,"请输入ROOT权限的KEY", null, inputCallback, null);
     }
 
     public void showInputRootCmdDlg() {
@@ -170,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        showInputDlg(lastInputCmd, "请输入ROOT命令", inputCallback);
+        DialogUtils.showInputDlg(this, lastInputCmd, "请输入ROOT命令", null, inputCallback, null);
     }
 
     public void showInputRootExecProcessPathDlg() {
@@ -178,6 +179,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void handleMessage(@NonNull Message msg) {
                 String text = (String)msg.obj;
+
                 lastInputRootExecPath = text;
                 SharedPreferences.Editor mEdit = m_shareSave.edit();
                 mEdit.putString("lastInputRootExecPath", lastInputRootExecPath);
@@ -186,49 +188,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        showInputDlg(lastInputRootExecPath, "请输入Linux可执行程序的文件位置", inputCallback);
-        showMsgDlg("提示", "本功能是以ROOT身份直接运行程序，可避免产生su、sh等多余驻留后台进程，能最大程度上避免侦测", null);
-    }
-
-    public void showInputDlg(String defaultText, String title, Handler confirmCallback) {
-        final EditText inputTxt = new EditText(MainActivity.this);
-        inputTxt.setText(defaultText);
-        inputTxt.setFocusable(true);
-        inputTxt.setSelection(defaultText.length(), 0);
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setTitle(title).setIcon(android.R.drawable.ic_dialog_info).setView(inputTxt)
-                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                });
-        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) {
-                String text = inputTxt.getText().toString();
-                Message msg = new Message();
-                msg.obj = text;
-                confirmCallback.sendMessage(msg);
+        Handler helperCallback = new Handler() {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                DialogUtils.showMsgDlg(MainActivity.this,"帮助", "请将经过JNI编译的程序文件放入/data内任意目录，如/data/app/com.xx，其他的隐藏目录，大家自己甄选；然后赋予程序文件777权限；随即输入程序文件的路径，如：\n/data/com.xx/aaa\n即可直接执行", null);
+                super.handleMessage(msg);
             }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private void showMsgDlg(String title, String msg, Drawable icon) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(title);
-        builder.setMessage(msg);
-        if(icon != null) {
-            builder.setIcon(icon);
-        }
-        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                dialog.dismiss();
-            }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        };
+        DialogUtils.showInputDlg(this, lastInputRootExecPath, "请输入Linux可执行程序的文件位置", "指导", inputCallback, helperCallback);
+        DialogUtils.showMsgDlg(this,"提示", "本功能是以ROOT身份直接执行程序，可避免产生su、sh等多余驻留后台进程，能最大程度上避免侦测", null);
     }
 
     public void onClickSuEnvInstallBtn() {
@@ -237,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(insRet.indexOf("installSu done.") != -1) {
             String suFullPath = getLastInstallSuFullPath();
             appendConsoleMsg("lastInstallSuFullPath:" + suFullPath);
-            showMsgDlg("温馨提示",
+            DialogUtils.showMsgDlg(this,"温馨提示",
                     "安装部署su成功，su路径已复制到剪贴板。", null);
             copyEditText(suFullPath);
             appendConsoleMsg("安装部署su成功，su路径已复制到剪贴板");
@@ -273,7 +241,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 m_loadingDlg.cancel();
 
                                 if(autoSuEnvInjectRet.indexOf("autoSuEnvInject done.")!= -1) {
-                                    showMsgDlg("提示",
+                                    DialogUtils.showMsgDlg(MainActivity.this, "提示",
                                             "已授予ROOT权限至APP [" + appItem.getShowName(MainActivity.this) + "]",
                                             appItem.getDrawable(MainActivity.this));
                                 }
@@ -318,7 +286,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                         String parasiteImplantSuEnvRet = parasiteImplantSuEnv(rootKey, appItem.getPackageName(), fileItem.getFilePath());
                                         appendConsoleMsg(parasiteImplantSuEnvRet);
                                         if(parasiteImplantSuEnvRet.indexOf("parasiteImplantSuEnv done.")!= -1) {
-                                            showMsgDlg("提示",
+                                            DialogUtils.showMsgDlg(MainActivity.this, "提示",
                                                     "已永久寄生su环境至APP [" + appItem.getShowName(MainActivity.this) + "]",
                                                     appItem.getDrawable(MainActivity.this));
                                         }
@@ -373,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void onClickImplantAppBtn() {
-        showMsgDlg("建议", "为了实现最佳隐蔽性，推荐寄生到能常驻后台且联网的APP上，如音乐类、播放器类、运动类、广播类、社交聊天类APP", null);
+        DialogUtils.showMsgDlg(this, "建议", "为了实现最佳隐蔽性，推荐寄生到能常驻后台且联网的APP上，如音乐类、播放器类、运动类、广播类、社交聊天类APP", null);
         Handler selectImplantAppCallback = new Handler() {
             @Override
             public void handleMessage(@NonNull Message msg) {
@@ -405,7 +373,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                         String parasiteImplantAppRet = parasiteImplantApp(rootKey, appItem.getPackageName(), fileItem.getFilePath(), suBasePath);
                                         appendConsoleMsg(parasiteImplantAppRet);
                                         if(parasiteImplantAppRet.indexOf("parasiteImplantApp done.")!= -1) {
-                                            showMsgDlg("提示",
+                                            DialogUtils.showMsgDlg(MainActivity.this, "提示",
                                                     "已经寄生到APP [" + appItem.getShowName(MainActivity.this) + "]",
                                                     appItem.getDrawable(MainActivity.this));
                                         }

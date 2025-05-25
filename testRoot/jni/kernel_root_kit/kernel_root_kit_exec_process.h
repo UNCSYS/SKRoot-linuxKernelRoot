@@ -19,7 +19,7 @@
 #include "kernel_root_kit_command.h"
 
 namespace kernel_root {
-	//以root身份直接运行程序
+	//以root身份直接执行程序
 	static ssize_t root_exec_process(const char* str_root_key, const char *file_path) {
 		int err = ERR_NONE;
 		if (file_path == NULL || strlen(file_path) == 0) { return ERR_PARAM; }
