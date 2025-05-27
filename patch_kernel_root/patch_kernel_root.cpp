@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
 		next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
 		next_hook_func_addr = patchFreezeTask.patch_freeze_task(next_hook_func_addr, v_cred, vec_patch_bytes_data);
 	} else if (symbol_analyze.is_kernel_version_less("6.0.0") && sym.__cfi_check) {
-		first_hook_start_addr = sym.__cfi_check;
+		first_hook_start_addr = sym.__cfi_check + 4;
 		next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr, v_cred, v_seccomp, vec_patch_bytes_data);
 		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_start_addr, next_hook_func_addr, vec_patch_bytes_data);
 		next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
