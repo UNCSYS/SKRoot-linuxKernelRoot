@@ -6,7 +6,7 @@ class PatchDoExecve : public PatchBase
 {
 public:
 	PatchDoExecve(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-		const AnalyzeKernel& analyze_kernel);
+		const SymbolAnalyze& symbol_analyze);
 	~PatchDoExecve();
 
 	size_t patch_do_execve(const std::string& str_root_key, size_t hook_func_start_addr,

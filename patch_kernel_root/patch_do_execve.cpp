@@ -2,7 +2,7 @@
 #include "patch_do_execve.h"
 #include "analyze/ARM_asm.h"
 PatchDoExecve::PatchDoExecve(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-	const AnalyzeKernel& analyze_kernel) : PatchBase(file_buf, sym, analyze_kernel) {
+	const SymbolAnalyze& symbol_analyze) : PatchBase(file_buf, sym, symbol_analyze) {
 
 }
 PatchDoExecve::~PatchDoExecve() {}
@@ -10,15 +10,15 @@ PatchDoExecve::~PatchDoExecve() {}
 std::pair<size_t, size_t> PatchDoExecve::get_do_execve_param() {
 	size_t do_execve_addr = 0;
 	size_t do_execve_key_reg;
-	if (m_analyze_kernel.is_kernel_version_less("3.19.0")) {
+	if (m_symbol_analyze.is_kernel_version_less("3.19.0")) {
 		do_execve_addr = m_sym.do_execve_common;
 		do_execve_key_reg = 0;
 	}
-	else  if (m_analyze_kernel.is_kernel_version_less("4.18.0")) {
+	else  if (m_symbol_analyze.is_kernel_version_less("4.18.0")) {
 		do_execve_addr = m_sym.do_execveat_common;
 		do_execve_key_reg = 1;
 	}
-	else if (m_analyze_kernel.is_kernel_version_less("5.9.0")) {
+	else if (m_symbol_analyze.is_kernel_version_less("5.9.0")) {
 		do_execve_addr = m_sym.__do_execve_file;
 		do_execve_key_reg = 1;
 	}

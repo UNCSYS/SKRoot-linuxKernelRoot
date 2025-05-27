@@ -6,7 +6,7 @@ class PatchAvcDenied : public PatchBase
 {
 public:
 	PatchAvcDenied(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-		const AnalyzeKernel& analyze_kernel);
+		const SymbolAnalyze& symbol_analyze);
 	~PatchAvcDenied();
 
 	size_t patch_avc_denied(size_t hook_func_start_addr, const std::vector<size_t>& task_struct_offset_cred,

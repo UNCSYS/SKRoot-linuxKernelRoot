@@ -6,7 +6,7 @@ class PatchFreezeTask : public PatchBase
 {
 public:
 	PatchFreezeTask(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-		const AnalyzeKernel& analyze_kernel);
+		const SymbolAnalyze& symbol_analyze);
 	~PatchFreezeTask();
 
 	size_t patch_freeze_task(size_t hook_func_start_addr, const std::vector<size_t>& task_struct_offset_cred,

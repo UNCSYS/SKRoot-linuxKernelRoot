@@ -1,7 +1,7 @@
 ﻿#include "patch_filldir64.h"
 #include "analyze/ARM_asm.h"
 PatchFilldir64::PatchFilldir64(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-	const AnalyzeKernel& analyze_kernel) : PatchBase(file_buf, sym, analyze_kernel) {
+	const SymbolAnalyze& symbol_analyze) : PatchBase(file_buf, sym, symbol_analyze) {
 
 }
 

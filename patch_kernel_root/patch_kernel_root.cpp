@@ -1,6 +1,6 @@
 ﻿#include "patch_kernel_root.h"
 #include "analyze/base_func.h"
-#include "analyze/analyze_kernel.h"
+#include "analyze/symbol_analyze.h"
 #include "analyze/ARM_asm.h"
 
 #include "patch_do_execve.h"
@@ -74,13 +74,13 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	AnalyzeKernel analyze_kernel(file_buf);
-	if (!analyze_kernel.analyze_kernel_symbol()) {
+	SymbolAnalyze symbol_analyze(file_buf);
+	if (!symbol_analyze.analyze_kernel_symbol()) {
 		std::cout << "Failed to analyze kernel symbols" << std::endl;
 		system("pause");
 		return 0;
 	}
-	KernelSymbolOffset sym = analyze_kernel.get_symbol_offset();
+	KernelSymbolOffset sym = symbol_analyze.get_symbol_offset();
 
 	std::cout << "_text:" << sym._text << std::endl;
 	std::cout << "_stext:" << sym._stext << std::endl;
@@ -166,20 +166,20 @@ int main(int argc, char* argv[]) {
 		std::cin >> str_root_key;
 	}
 
-	PatchDoExecve patchDoExecve(file_buf, sym, analyze_kernel);
-	PatchAvcDenied patchAvcDenied(file_buf, sym, analyze_kernel);
-	PatchFilldir64 patchFilldir64(file_buf, sym, analyze_kernel);
-	PatchFreezeTask patchFreezeTask(file_buf, sym, analyze_kernel);
+	PatchDoExecve patchDoExecve(file_buf, sym, symbol_analyze);
+	PatchAvcDenied patchAvcDenied(file_buf, sym, symbol_analyze);
+	PatchFilldir64 patchFilldir64(file_buf, sym, symbol_analyze);
+	PatchFreezeTask patchFreezeTask(file_buf, sym, symbol_analyze);
 
 	size_t first_hook_start_addr = 0, next_hook_func_addr = 0;
 	std::vector<size_t> v_hook_func_start_addr;
-	if (analyze_kernel.is_kernel_version_less("5.5.0")) {
+	if (symbol_analyze.is_kernel_version_less("5.5.0")) {
 		first_hook_start_addr = 0x200;
 		next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr, v_cred, v_seccomp, vec_patch_bytes_data);
 		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_start_addr, next_hook_func_addr, vec_patch_bytes_data);
 		next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
 		next_hook_func_addr = patchFreezeTask.patch_freeze_task(next_hook_func_addr, v_cred, vec_patch_bytes_data);
-	} else if (analyze_kernel.is_kernel_version_less("6.0.0") && sym.__cfi_check) {
+	} else if (symbol_analyze.is_kernel_version_less("6.0.0") && sym.__cfi_check) {
 		first_hook_start_addr = sym.__cfi_check;
 		next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr, v_cred, v_seccomp, vec_patch_bytes_data);
 		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_start_addr, next_hook_func_addr, vec_patch_bytes_data);

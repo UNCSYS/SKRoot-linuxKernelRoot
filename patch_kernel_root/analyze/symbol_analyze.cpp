@@ -1,14 +1,14 @@
-﻿#include "analyze_kernel.h"
+﻿#include "symbol_analyze.h"
 
-AnalyzeKernel::AnalyzeKernel(const std::vector<char>& file_buf) : m_file_buf(file_buf), m_kernel_sym_parser(file_buf)
+SymbolAnalyze::SymbolAnalyze(const std::vector<char>& file_buf) : m_file_buf(file_buf), m_kernel_sym_parser(file_buf)
 {
 }
 
-AnalyzeKernel::~AnalyzeKernel()
+SymbolAnalyze::~SymbolAnalyze()
 {
 }
 
-bool AnalyzeKernel::analyze_kernel_symbol() {
+bool SymbolAnalyze::analyze_kernel_symbol() {
 	if (!m_kernel_sym_parser.init_kallsyms_lookup_name()) {
 		std::cout << "Failed to initialize kallsyms lookup name" << std::endl;
 		return false;
@@ -20,15 +20,15 @@ bool AnalyzeKernel::analyze_kernel_symbol() {
 	return true;
 }
 
-KernelSymbolOffset AnalyzeKernel::get_symbol_offset() {
+KernelSymbolOffset SymbolAnalyze::get_symbol_offset() {
 	return m_kernel_sym_offset;
 }
 
-bool AnalyzeKernel::is_kernel_version_less(const std::string& ver) const {
+bool SymbolAnalyze::is_kernel_version_less(const std::string& ver) const {
 	return m_kernel_sym_parser.is_kernel_version_less(ver);
 }
 
-bool AnalyzeKernel::find_symbol_offset() {
+bool SymbolAnalyze::find_symbol_offset() {
 	m_kernel_sym_offset._text = m_kernel_sym_parser.kallsyms_lookup_name("_text");
 	m_kernel_sym_offset._stext = m_kernel_sym_parser.kallsyms_lookup_name("_stext");
 

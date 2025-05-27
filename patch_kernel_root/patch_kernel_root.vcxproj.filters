@@ -48,9 +48,6 @@
     <ClCompile Include="analyze\kernel_version_parser.cpp">
       <Filter>analyze</Filter>
     </ClCompile>
-    <ClCompile Include="analyze\analyze_kernel.cpp">
-      <Filter>analyze</Filter>
-    </ClCompile>
     <ClCompile Include="patch_filldir64.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -59,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="patch_freeze_task.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="analyze\symbol_analyze.cpp">
+      <Filter>analyze</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,9 +98,6 @@
     <ClInclude Include="analyze\kernel_version_parser.h">
       <Filter>analyze</Filter>
     </ClInclude>
-    <ClInclude Include="analyze\analyze_kernel.h">
-      <Filter>analyze</Filter>
-    </ClInclude>
     <ClInclude Include="patch_filldir64.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -109,6 +106,9 @@
     </ClInclude>
     <ClInclude Include="patch_freeze_task.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="analyze\symbol_analyze.h">
+      <Filter>analyze</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

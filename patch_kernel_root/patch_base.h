@@ -2,12 +2,12 @@
 #include <iostream>
 #include <vector>
 #include "patch_kernel_root.h"
-#include "analyze/analyze_kernel.h"
+#include "analyze/symbol_analyze.h"
 class PatchBase
 {
 public:
 	PatchBase(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-		const AnalyzeKernel& analyze_kernel);
+		const SymbolAnalyze& symbol_analyze);
 	~PatchBase();
 protected:
 	int get_cred_atomic_usage_len();
@@ -16,5 +16,5 @@ protected:
 	int get_cap_cnt();
 	const std::vector<char>& m_file_buf;
 	const KernelSymbolOffset& m_sym;
-	const AnalyzeKernel& m_analyze_kernel;
+	const SymbolAnalyze& m_symbol_analyze;
 };

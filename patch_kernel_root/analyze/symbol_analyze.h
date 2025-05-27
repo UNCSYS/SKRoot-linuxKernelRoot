@@ -33,11 +33,11 @@ struct KernelSymbolOffset {
 	size_t report_cfi_failure = 0;
 };
 
-class AnalyzeKernel
+class SymbolAnalyze
 {
 public:
-	AnalyzeKernel(const std::vector<char> & file_buf);
-	~AnalyzeKernel();
+	SymbolAnalyze(const std::vector<char> & file_buf);
+	~SymbolAnalyze();
 
 public:
 	bool analyze_kernel_symbol();
