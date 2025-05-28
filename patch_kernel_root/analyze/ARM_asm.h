@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include "base_func.h"
 
 static std::string AsmToBytes(const std::string& strArm64Asm) {
 	//获取汇编文本
@@ -79,26 +80,46 @@ static std::string AsmToBytes(const std::string& strArm64Asm) {
 
 }
 
-static const char HEX[16] = {
-'0', '1', '2', '3',
-'4', '5', '6', '7',
-'8', '9', 'a', 'b',
-'c', 'd', 'e', 'f'
-};
-
-/* Convert byte array to hex string. */
-static std::string bytes_2_hex_str(const unsigned char* input, size_t length) {
-
-	std::string str;
-	str.reserve(length << 1);
-	for (size_t i = 0; i < length; ++i) {
-		int t = input[i];
-		int a = t / 16;
-		int b = t % 16;
-		str.append(1, HEX[a]);
-		str.append(1, HEX[b]);
+static std::string AsmLabelToOffset(const std::string& asm_code, const char* end_label_name, const char* jump_label_name) {
+	// 得到结尾位置
+	std::string s = asm_code;
+	size_t n = s.find(end_label_name);
+	if (n == -1) {
+		return s;
 	}
-	return str;
+	std::string before = s.substr(0, n);
+	size_t end_back_idx_line = count_endl(before);
+	replace_all_distinct(s, end_label_name, "");
+
+	// 逐行切割
+	std::vector<std::string> lines;
+	{
+		std::istringstream iss(s);
+		std::string line;
+		while (std::getline(iss, line)) {
+			if (!line.empty() && line.back() == '\r')
+				line.pop_back();
+			lines.push_back(line);
+		}
+	}
+
+	// 替换每一行中的 #JUMP_END
+	const std::string placeholder = jump_label_name;
+	for (size_t idx = 0; idx < lines.size(); ++idx) {
+		auto p = lines[idx].find(placeholder);
+		if (p != std::string::npos) {
+			int imm = (end_back_idx_line - idx) * 4;
+			lines[idx].replace(p, placeholder.size(), std::to_string(imm));
+		}
+	}
+
+	// 拼回去
+	std::string out;
+	for (size_t i = 0; i < lines.size(); ++i) {
+		out += lines[i];
+		out += "\n";
+	}
+	return out;
 }
 
 #endif /* ARM_ASM_HELPER_H_ */

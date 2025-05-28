@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 	if (need_write_modify_in_file == 1) {
 		for (auto& item : vec_patch_bytes_data) {
 			std::shared_ptr<char> spData(new (std::nothrow) char[item.str_bytes.length() / 2], std::default_delete<char[]>());
-			hex2byte((uint8_t*)item.str_bytes.c_str(), (uint8_t*)spData.get());
+			hex2bytes((uint8_t*)item.str_bytes.c_str(), (uint8_t*)spData.get());
 			if (!write_file_bytes(file_path, item.write_addr, spData.get(), item.str_bytes.length() / 2)) {
 				std::cout << "写入文件发生错误" << std::endl;
 			}

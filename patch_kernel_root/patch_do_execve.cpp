@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "patch_do_execve.h"
+#include "analyze/base_func.h"
 #include "analyze/ARM_asm.h"
 PatchDoExecve::PatchDoExecve(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
 	const SymbolAnalyze& symbol_analyze) : PatchBase(file_buf, sym, symbol_analyze) {
@@ -56,7 +57,7 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 
 	size_t do_execve_entry_hook_jump_back_addr = do_execve_addr + 4;
 
-	std::string str_show_root_key_mem_byte = bytes_2_hex_str((const unsigned char*)str_root_key.c_str(), str_root_key.length());
+	std::string str_show_root_key_mem_byte = bytes2hex((const unsigned char*)str_root_key.c_str(), str_root_key.length());
 	std::cout << "#生成的ROOT密匙字节集：" << str_show_root_key_mem_byte.c_str() << std::endl << std::endl;
 
 	vec_out_patch_bytes_data.push_back({ str_show_root_key_mem_byte, hook_func_start_addr });
@@ -64,7 +65,6 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	size_t nHookFuncSize = str_root_key.length();
 	hook_func_start_addr += nHookFuncSize;
 
-	auto next_asm_line_bytes_cnt = (task_struct_offset_cred.size() - 1) * 4;
 	std::stringstream sstrAsm;
 
 	sstrAsm
@@ -74,20 +74,21 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "STP X11, X12, [sp, #-16]!" << std::endl
 		<< "MOV X7, 0xFFFFFFFFFFFFF001" << std::endl
 		<< "CMP X" << do_execve_key_reg << ", X7" << std::endl
-		<< "BCS #" << 128 + next_asm_line_bytes_cnt << std::endl
+		<< "BCS #JUMP_END" << std::endl
 		<< "LDR X7, [X" << do_execve_key_reg << "]" << std::endl
-		<< "CBZ X7, #" << 120 + next_asm_line_bytes_cnt << std::endl
-		<< "ADR X8, #-84" << std::endl
+		<< "CBZ X7, #JUMP_END" << std::endl;
+		size_t end_order_cnt = count_endl(sstrAsm.str());
+		int key_offset = (hook_func_start_addr - 48) - (hook_func_start_addr + end_order_cnt * 4);
+		sstrAsm << "ADR X8, #"<< key_offset << std::endl
 		<< "MOV X9, #0" << std::endl
+		<< "LABEL_CYCLE_NAME:"
 		<< "LDRB W10, [X7, X9]" << std::endl
-		<< "CBZ W10, #" << 104 + next_asm_line_bytes_cnt << std::endl
 		<< "LDRB W11, [X8, X9]" << std::endl
-		<< "CBZ W11, #" << 96 + next_asm_line_bytes_cnt << std::endl
 		<< "CMP W10, W11" << std::endl
-		<< "B.NE #" << 88 + next_asm_line_bytes_cnt << std::endl
+		<< "B.NE #JUMP_END" << std::endl
 		<< "ADD X9, X9, 1" << std::endl
 		<< "CMP X9, #" << str_root_key.length() << std::endl
-		<< "BLT #-32" << std::endl;
+		<< "BLT #JUMP_CYCLE_NAME" << std::endl;
 		sstrAsm << "MRS X8, SP_EL0" << std::endl;
 		for (auto x = 0; x < task_struct_offset_cred.size(); x++) {
 			if (x != task_struct_offset_cred.size() - 1) {
@@ -102,27 +103,26 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "STR XZR, [X10], #8" << std::endl
 		<< "MOV W9, 0xC" << std::endl
 		<< "STR W9, [X10], #"<< 4 + securebits_padding << std::endl
-		<< "MOV X9, "<< cap_ability_max << std::endl
+		<< "MOV X9, "<< cap_ability_max << std::endl 
 		<< "STP X9, X9, [X10], #16" << std::endl
 		<< "STP X9, X9, [X10], #16" << std::endl;
 		if (cap_cnt == 5) {
 			sstrAsm << "STR X9, [X10], #8" << std::endl;
-		} else {
-			sstrAsm << "MOV X1, X1" << std::endl;
 		}
 		sstrAsm  << "LDXR W10, [X8]" << std::endl
 		<< "BIC W10, W10,#0xFFF" << std::endl
 		<< "STXR W11, W10, [X8]" << std::endl
 		<< "STR WZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] << "]" << std::endl
 		<< "STR XZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] + 8 << "]" << std::endl
+		<< "LABEL_END:"
 		<< "LDP X11, X12, [sp], #16" << std::endl
 		<< "LDP X9, X10, [sp], #16" << std::endl
-		<< "LDP X7, X8, [sp], #16" << std::endl
-		<< "B #" << do_execve_entry_hook_jump_back_addr - (hook_func_start_addr + 0xA4 + next_asm_line_bytes_cnt) << std::endl;
+		<< "LDP X7, X8, [sp], #16" << std::endl;
+		size_t end_order_len = count_endl(sstrAsm.str()) * 4;
+		sstrAsm << "B #" << (int64_t)(do_execve_entry_hook_jump_back_addr - (hook_func_start_addr + end_order_len)) << std::endl;
 
-
-
-	std::string strAsmCode = sstrAsm.str();
+	std::string strAsmCode = AsmLabelToOffset(sstrAsm.str(), "LABEL_END:", "JUMP_END");
+	strAsmCode = AsmLabelToOffset(strAsmCode, "LABEL_CYCLE_NAME:", "JUMP_CYCLE_NAME");
 	std::cout << std::endl << strAsmCode << std::endl;
 
 	std::string strBytes = AsmToBytes(strAsmCode);
@@ -134,14 +134,14 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 
 	char hookOrigCmd[4] = { 0 };
 	memcpy(&hookOrigCmd, (void*)((size_t)&m_file_buf[0] + do_execve_addr), sizeof(hookOrigCmd));
-	std::string strHookOrigCmd = bytes_2_hex_str((const unsigned char*)hookOrigCmd, sizeof(hookOrigCmd));
+	std::string strHookOrigCmd = bytes2hex((const unsigned char*)hookOrigCmd, sizeof(hookOrigCmd));
 	strBytes = strHookOrigCmd + strBytes.substr(0x4 * 2);
 
 	vec_out_patch_bytes_data.push_back({ strBytes, hook_func_start_addr });
 
 	std::stringstream sstrAsm2;
 	sstrAsm2
-		<< "B #" << hook_func_start_addr - do_execve_addr << std::endl;
+		<< "B #" << (int64_t)(hook_func_start_addr - do_execve_addr) << std::endl;
 	std::string strBytes2 = AsmToBytes(sstrAsm2.str());
 	if (!strBytes2.length()) {
 		return 0;
