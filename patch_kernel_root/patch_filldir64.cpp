@@ -70,5 +70,5 @@ size_t PatchFilldir64::patch_filldir64(size_t root_key_addr_offset, size_t hook_
 	vec_out_patch_bytes_data.push_back({ strBytes2, filldir64_addr });
 	hook_func_start_addr += nHookFuncSize;
 	std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
-	return hook_func_start_addr + nHookFuncSize;
+	return hook_func_start_addr;
 }

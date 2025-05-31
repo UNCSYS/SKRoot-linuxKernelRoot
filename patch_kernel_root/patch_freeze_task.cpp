@@ -84,5 +84,5 @@ size_t PatchFreezeTask::patch_freeze_task(size_t hook_func_start_addr, const std
 	vec_out_patch_bytes_data.push_back({ strBytes2, freeze_task_addr });
 	hook_func_start_addr += nHookFuncSize;
 	std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
-	return hook_func_start_addr + nHookFuncSize;
+	return hook_func_start_addr;
 }
