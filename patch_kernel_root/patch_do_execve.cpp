@@ -88,14 +88,15 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "B.NE #JUMP_END" << std::endl
 		<< "ADD X9, X9, 1" << std::endl
 		<< "CMP X9, #" << str_root_key.length() << std::endl
-		<< "BLT #JUMP_CYCLE_NAME" << std::endl;
-		sstrAsm << "MRS X8, SP_EL0" << std::endl;
+		<< "BLT #JUMP_CYCLE_NAME" << std::endl
+		<< "MRS X8, SP_EL0" << std::endl
+		<< "MOV X10, X8" << std::endl;
 		for (auto x = 0; x < task_struct_offset_cred.size(); x++) {
 			if (x != task_struct_offset_cred.size() - 1) {
-				sstrAsm << "LDR X8, [X8, #" << task_struct_offset_cred[x] << "]" << std::endl;
+				sstrAsm << "LDR X10, [X10, #" << task_struct_offset_cred[x] << "]" << std::endl;
 			}
 		}
-		sstrAsm << "LDR X10, [X8, #" << task_struct_offset_cred[task_struct_offset_cred.size() - 1] << "]" << std::endl
+		sstrAsm << "LDR X10, [X10, #" << task_struct_offset_cred[task_struct_offset_cred.size() - 1] << "]" << std::endl
 		<< "ADD X10, X10, #" << atomic_usage_len << std::endl
 		<< "STR XZR, [X10], #8" << std::endl
 		<< "STR XZR, [X10], #8" << std::endl
