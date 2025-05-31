@@ -112,8 +112,7 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		sstrAsm  << "LDXR W10, [X8]" << std::endl
 		<< "BIC W10, W10,#0xFFF" << std::endl
 		<< "STXR W11, W10, [X8]" << std::endl
-		<< "STR WZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] << "]" << std::endl
-		<< "STR XZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] + 8 << "]" << std::endl
+		<< "STR XZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] << "]" << std::endl
 		<< "LABEL_END:"
 		<< "LDP X11, X12, [sp], #16" << std::endl
 		<< "LDP X9, X10, [sp], #16" << std::endl
