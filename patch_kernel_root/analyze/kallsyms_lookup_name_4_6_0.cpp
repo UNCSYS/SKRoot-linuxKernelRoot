@@ -1,4 +1,4 @@
-﻿#include "kallsyms_lookup_name_4_6_0.h"
+#include "kallsyms_lookup_name_4_6_0.h"
 #include "base_func.h"
 
 #ifndef MIN
@@ -20,7 +20,7 @@ KallsymsLookupName_4_6_0::~KallsymsLookupName_4_6_0()
 bool KallsymsLookupName_4_6_0::init() {
 	size_t offset_list_start = 0, offset_list_end = 0;
 	if (!find_kallsyms_offsets_list(offset_list_start, offset_list_end)) {
-		std::cout << "Unable to find the list of kallsyms offsets" << std::endl;
+		std::cout << "[4.6] Unable to find the list of kallsyms offsets" << std::endl;
 		return false;
 	}
 	size_t kallsyms_num_offset = 0;
@@ -33,11 +33,11 @@ bool KallsymsLookupName_4_6_0::init() {
 	std::cout << std::hex << "kallsyms_num: 0x" << m_kallsyms_num << ", offset: 0x" << kallsyms_num_offset << std::endl;
 
 	// revise the offset list offset again
-	const int offset_list_var_len = sizeof(long);
+	const int offset_list_var_len = sizeof(uint32_t);
 	offset_list_start = offset_list_end - m_kallsyms_num * offset_list_var_len;
-	long test_first_offset_list_val;
+	uint32_t test_first_offset_list_val;
 	do {
-		test_first_offset_list_val = *(long*)&m_file_buf[offset_list_start];
+		test_first_offset_list_val = *(uint32_t*)&m_file_buf[offset_list_start];
 		if (test_first_offset_list_val) {
 			offset_list_start -= offset_list_var_len;
 			offset_list_end -= offset_list_var_len;
@@ -85,6 +85,9 @@ bool KallsymsLookupName_4_6_0::init() {
 	}
 	std::cout << std::hex << "kallsyms_token_index_start: 0x" << token_index_start << std::endl;
 	m_kallsyms_token_index.offset = token_index_start;
+
+
+	std::cout << std::hex << "_kln get _stext" <<__kallsyms_lookup_name("_stext")<<std::endl;
 	
 	size_t kallsyms_sym_func_entry_offset = 0;
 	if (!find_kallsyms_sym_func_entry_offset(kallsyms_sym_func_entry_offset)) {
@@ -106,31 +109,37 @@ int KallsymsLookupName_4_6_0::get_kallsyms_num() {
 	return m_kallsyms_num;
 }
 bool KallsymsLookupName_4_6_0::find_kallsyms_offsets_list(size_t& start, size_t& end) {
-	const int var_len = sizeof(long);
-	for (auto x = 0; x + var_len < m_file_buf.size(); x += var_len) {
-		long val1 = *(long*)&m_file_buf[x];
-		long val2 = *(long*)&m_file_buf[x + var_len];
-		if (val1 != 0 || val1 >= val2) {
-			continue;
-		}
-		int cnt = 0;
-		auto j = x + var_len;
-		for (; j + var_len < m_file_buf.size(); j += var_len) {
-			val1 = *(long*)&m_file_buf[j];
-			val2 = *(long*)&m_file_buf[j + var_len];
-			if (val1 > val2 || val2 == 0 || (val2 - val1) > 0x1000000) {
-				j += var_len;
-				break;
-			}
-			cnt++;
-		}
-		if (cnt >= 0x10000) {
-			start = x;
-			end = j;
-			return true;
-		}
-	}
-	return false;
+    const int var_len = sizeof(uint32_t); // 固定 4 字节（适用于内核符号表）
+    for (auto x = 0; x + var_len < m_file_buf.size(); x += var_len) {
+        // 安全读取 4 字节（避免未对齐访问）
+        uint32_t val1, val2;
+        std::memcpy(&val1, &m_file_buf[x], sizeof(uint32_t));
+        std::memcpy(&val2, &m_file_buf[x + var_len], sizeof(uint32_t));
+
+        if (val1 != 0 || val1 >= val2) {
+            continue;
+        }
+
+        int cnt = 0;
+        auto j = x + var_len;
+        for (; j + var_len < m_file_buf.size(); j += var_len) {
+            std::memcpy(&val1, &m_file_buf[j], sizeof(uint32_t));
+            std::memcpy(&val2, &m_file_buf[j + var_len], sizeof(uint32_t));
+
+            if (val1 > val2 || val2 == 0 || (val2 - val1) > 0x1000000) {
+                j += var_len;
+                break;
+            }
+            cnt++;
+        }
+
+        if (cnt >= 0x10000) {
+            start = x;
+            end = j;
+            return true;
+        }
+    }
+    return false;
 }
 
 int KallsymsLookupName_4_6_0::find_kallsyms_num(size_t offset_list_start, size_t offset_list_end, size_t& kallsyms_num_offset) {
@@ -181,7 +190,7 @@ bool KallsymsLookupName_4_6_0::find_kallsyms_names_list(int kallsyms_num, size_t
 }
 
 
-bool KallsymsLookupName_4_6_0::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t&markers_list_end) {
 	size_t start = align8(name_list_end_offset);
 	const int var_len = sizeof(long);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -337,29 +346,29 @@ unsigned int KallsymsLookupName_4_6_0::kallsyms_expand_symbol(unsigned int off, 
 	}
 
 tail:
-	if (maxlen)
-		*result = '\0';
+    if (maxlen) {
+        *result = '\0';
+    }
 
 	/* Return to offset to the next symbol. */
 	return off;
 }
-
 /* Lookup the address for this symbol. Returns 0 if not found. */
 uint64_t KallsymsLookupName_4_6_0::__kallsyms_lookup_name(const char* name, bool include_str_mode) {
-	for (auto i = 0, off = 0; i < m_kallsyms_num; i++) {
-		char namebuf[KSYM_NAME_LEN] = { 0 };
-		off = kallsyms_expand_symbol(off, namebuf, sizeof(namebuf));
+    for (auto i = 0, off = 0; i < m_kallsyms_num; i++) {
+        char namebuf[KSYM_NAME_LEN] = { 0 };
+        off = kallsyms_expand_symbol(off, namebuf, sizeof(namebuf));
 
-		if (strcmp(namebuf, name) == 0 || (include_str_mode && strstr(namebuf, name))) {
+        // 检查符号名匹配
+        if (strcmp(namebuf, name) == 0 || (include_str_mode && strstr(namebuf, name))) {
 			auto pos = m_kallsyms_offsets.offset + i * sizeof(int);
-			uint64_t offset = *(long*)&m_file_buf[pos];
+			uint64_t offset = *(uint32_t*)&m_file_buf[pos];
 			offset += m_kallsyms_sym_func_entry_offset;
 			return offset;
-		}
-	}
-	return 0;
+        }
+    }
+    return 0; // 未找到
 }
-
 uint64_t KallsymsLookupName_4_6_0::kallsyms_lookup_name(const char* name, bool include_str_mode) {
 	if (!m_inited) { return 0;  }
 	return __kallsyms_lookup_name(name, include_str_mode);
