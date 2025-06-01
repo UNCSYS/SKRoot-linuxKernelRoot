@@ -1,7 +1,7 @@
 ﻿#include "patch_kernel_root.h"
 #include "analyze/base_func.h"
 #include "analyze/symbol_analyze.h"
-#include "analyze/ARM_asm.h"
+#include "analyze/Arm64_asm.h"
 
 #include "patch_do_execve.h"
 #include "patch_avc_denied.h"
