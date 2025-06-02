@@ -30,7 +30,7 @@ call "%ndk_path%"
 cd %root_path%\lib_su_env
 call generate_source_lib_su_env_data.bat
 
-cd %root_path%\upx
+cd %root_path%\res\upx
 call generate_source_upx_data.bat
 
 cd %root_path%\lib_root_server

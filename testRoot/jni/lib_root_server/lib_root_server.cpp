@@ -685,8 +685,8 @@ extern "C" void __attribute__((constructor)) root_server_entry() {
 
 }
 
-// int test_main(int argc, char* argv[]) {
-//     std::string key = "bz4kKoPVSAG1tnwlcs1PJ1qp6HtVymj60CoTgsjmMd1UALve";
+// int main(int argc, char* argv[]) {
+//     std::string key = "u24kKoPVSAG1tnwlcs1PJ1qp6HtVymj60CoTgsjmMd1UALve";
 //     memset((void*)&static_inline_root_key, 0, sizeof(static_inline_root_key));
 //     memcpy((void*)&static_inline_root_key, (void*)key.c_str(), key.length() + 1);
 //     open_server_url();

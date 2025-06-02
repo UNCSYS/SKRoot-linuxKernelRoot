@@ -44,5 +44,5 @@ if exist "%work_path%\obj" (
 )
 
 echo Finished generating the 'kernel_root_kit_lib_root_server_data.h' file!
-move /Y kernel_root_kit_lib_root_server_data.h ../kernel_root_kit
+move /Y kernel_root_kit_lib_root_server_data.h %kernel_root_path%
 echo Successfully moved file 'kernel_root_kit_lib_root_server_data.h'!

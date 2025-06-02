@@ -39,8 +39,8 @@ if exist lib_root_server\index_html_gz_data.h (
     del lib_root_server\index_html_gz_data.h
 )
 
-if exist upx\res.h (
-    del upx\res.h
+if exist res\upx\res.h (
+    del res\upx\res.h
 )
 
 if exist "%root_path%\su\libs" (

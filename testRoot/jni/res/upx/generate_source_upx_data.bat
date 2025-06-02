@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 
 set "work_path=%~dp0"
-set "kernel_root_path=%~dp0../kernel_root_kit"
+set "kernel_root_path=%~dp0../../kernel_root_kit"
 
 echo %work_path%
 echo %kernel_root_path%
@@ -35,5 +35,5 @@ if exist res.h (
 )
 
 echo Finished generating the 'kernel_root_kit_upx_data.h' file!
-move /Y kernel_root_kit_upx_data.h ../kernel_root_kit
+move /Y kernel_root_kit_upx_data.h %kernel_root_path%
 echo Successfully moved file 'kernel_root_kit_upx_data.h'!
