@@ -8,40 +8,52 @@ PatchDoExecve::PatchDoExecve(const std::vector<char>& file_buf, const KernelSymb
 }
 PatchDoExecve::~PatchDoExecve() {}
 
-std::pair<size_t, size_t> PatchDoExecve::get_do_execve_param() {
-	size_t do_execve_addr = 0;
-	size_t do_execve_key_reg;
+ExecveParam PatchDoExecve::get_do_execve_param() {
+	ExecveParam param = { 0 };
+	if (m_symbol_analyze.is_kernel_version_less("3.14.0")) {
+		param.do_execve_addr = m_sym.do_execve_common;
+		param.do_execve_key_reg = 0;
+		param.is_single_filename = true;
+	}
 	if (m_symbol_analyze.is_kernel_version_less("3.19.0")) {
-		do_execve_addr = m_sym.do_execve_common;
-		do_execve_key_reg = 0;
+		param.do_execve_addr = m_sym.do_execve_common;
+		param.do_execve_key_reg = 0;
 	}
 	else  if (m_symbol_analyze.is_kernel_version_less("4.18.0")) {
-		do_execve_addr = m_sym.do_execveat_common;
-		do_execve_key_reg = 1;
+		param.do_execve_addr = m_sym.do_execveat_common;
+		param.do_execve_key_reg = 1;
 	}
 	else if (m_symbol_analyze.is_kernel_version_less("5.9.0")) {
-		do_execve_addr = m_sym.__do_execve_file;
-		do_execve_key_reg = 1;
+		param.do_execve_addr = m_sym.__do_execve_file;
+		param.do_execve_key_reg = 1;
 	}
 	else {
 		// default linux kernel useage
-		do_execve_addr = m_sym.do_execveat_common;
-		do_execve_key_reg = 1;
+		param.do_execve_addr = m_sym.do_execveat_common;
+		param.do_execve_key_reg = 1;
 	}
 
-	if (do_execve_addr == 0) {
-		do_execve_addr = m_sym.do_execve;
-		do_execve_key_reg = 0;
+	if (param.do_execve_addr == 0) {
+		param.do_execve_addr = m_sym.do_execve;
+		param.do_execve_key_reg = 0;
 	}
-	if (do_execve_addr == 0) {
-		do_execve_addr = m_sym.do_execveat;
-		do_execve_key_reg = 1;
+	if (param.do_execve_addr == 0) {
+		param.do_execve_addr = m_sym.do_execveat;
+		param.do_execve_key_reg = 1;
 	}
-	return { do_execve_addr, do_execve_key_reg};
+	return param;
 }
+
 
 int PatchDoExecve::get_need_write_cap_cnt() {
 	return get_cap_cnt();
+}
+
+bool PatchDoExecve::is_thread_info_in_stack_bottom() {
+	if (m_symbol_analyze.is_kernel_version_less("4.9.0")) {
+		return true;
+	}
+	return false;
 }
 
 size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t hook_func_start_addr,
@@ -49,13 +61,14 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	const std::vector<size_t>& task_struct_offset_seccomp,
 	std::vector<patch_bytes_data>& vec_out_patch_bytes_data) {
 
-	auto [do_execve_addr, do_execve_key_reg] = get_do_execve_param();
+	const ExecveParam reg_param = get_do_execve_param();
 	int atomic_usage_len = get_cred_atomic_usage_len();
 	int securebits_padding = get_cred_securebits_padding();
 	std::string cap_ability_max = get_cap_ability_max();
 	int cap_cnt = get_need_write_cap_cnt();
+	bool is_thread_info_in_stack = is_thread_info_in_stack_bottom();
 
-	size_t do_execve_entry_hook_jump_back_addr = do_execve_addr + 4;
+	size_t do_execve_entry_hook_jump_back_addr = reg_param.do_execve_addr + 4;
 
 	std::string str_show_root_key_mem_byte = bytes2hex((const unsigned char*)str_root_key.c_str(), str_root_key.length());
 	std::cout << "#生成的ROOT密匙字节集：" << str_show_root_key_mem_byte.c_str() << std::endl << std::endl;
@@ -73,10 +86,13 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "STP X9, X10, [sp, #-16]!" << std::endl
 		<< "STP X11, X12, [sp, #-16]!" << std::endl
 		<< "MOV X7, 0xFFFFFFFFFFFFF001" << std::endl
-		<< "CMP X" << do_execve_key_reg << ", X7" << std::endl
-		<< "BCS #JUMP_END" << std::endl
-		<< "LDR X7, [X" << do_execve_key_reg << "]" << std::endl
-		<< "CBZ X7, #JUMP_END" << std::endl;
+		<< "CMP X" << reg_param.do_execve_key_reg << ", X7" << std::endl
+		<< "BCS #JUMP_END" << std::endl;
+		if(reg_param.is_single_filename) {
+			sstrAsm << "MOV X7, X" << reg_param.do_execve_key_reg << std::endl;
+		} else {
+			sstrAsm << "LDR X7, [X" << reg_param.do_execve_key_reg << "]" << std::endl;
+		}
 		size_t end_order_cnt = count_endl(sstrAsm.str());
 		int key_offset = (hook_func_start_addr - 48) - (hook_func_start_addr + end_order_cnt * 4);
 		sstrAsm << "ADR X8, #"<< key_offset << std::endl
@@ -104,14 +120,20 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "STR XZR, [X10], #8" << std::endl
 		<< "MOV W9, 0xC" << std::endl
 		<< "STR W9, [X10], #"<< 4 + securebits_padding << std::endl
-		<< "MOV X9, "<< cap_ability_max << std::endl 
+		<< "MOV X9, "<< cap_ability_max << std::endl
 		<< "STP X9, X9, [X10], #16" << std::endl
 		<< "STP X9, X9, [X10], #16" << std::endl;
 		if (cap_cnt == 5) {
 			sstrAsm << "STR X9, [X10], #8" << std::endl;
 		}
-		sstrAsm  << "LDXR W10, [X8]" << std::endl
-		<< "BIC W10, W10,#0xFFF" << std::endl
+		if (is_thread_info_in_stack) {
+			sstrAsm << "MOV X10, X8" << std::endl
+			<< "AND X10, X10, #(~(0x4000 - 1))" << std::endl
+			<< "LDXR W10, [X10]" << std::endl;
+		} else {
+			sstrAsm << "LDXR W10, [X8]" << std::endl;
+		}
+		sstrAsm  << "BIC W10, W10,#0xFFF" << std::endl
 		<< "STXR W11, W10, [X8]" << std::endl
 		<< "STR XZR, [X8, #" << task_struct_offset_seccomp[task_struct_offset_seccomp.size() - 1] << "]" << std::endl
 		<< "LABEL_END:"
@@ -119,7 +141,7 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 		<< "LDP X9, X10, [sp], #16" << std::endl
 		<< "LDP X7, X8, [sp], #16" << std::endl;
 		size_t end_order_len = count_endl(sstrAsm.str()) * 4;
-		sstrAsm << "B #" << (int64_t)(do_execve_entry_hook_jump_back_addr - (hook_func_start_addr + end_order_len)) << std::endl;
+		sstrAsm << "B #" << (int64_t)(do_execve_entry_hook_jump_back_addr - (hook_func_start_addr + end_order_len)) << std::endl;//回去到下一行
 
 	std::string strAsmCode = Arm64AsmLabelToOffset(sstrAsm.str(), "LABEL_END:", "JUMP_END");
 	strAsmCode = Arm64AsmLabelToOffset(strAsmCode, "LABEL_CYCLE_NAME:", "JUMP_CYCLE_NAME");
@@ -133,7 +155,7 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 	nHookFuncSize = strBytes.length() / 2;
 
 	char hookOrigCmd[4] = { 0 };
-	memcpy(&hookOrigCmd, (void*)((size_t)&m_file_buf[0] + do_execve_addr), sizeof(hookOrigCmd));
+	memcpy(&hookOrigCmd, (void*)((size_t)&m_file_buf[0] + reg_param.do_execve_addr), sizeof(hookOrigCmd));
 	std::string strHookOrigCmd = bytes2hex((const unsigned char*)hookOrigCmd, sizeof(hookOrigCmd));
 	strBytes = strHookOrigCmd + strBytes.substr(0x4 * 2);
 
@@ -141,13 +163,13 @@ size_t PatchDoExecve::patch_do_execve(const std::string& str_root_key, size_t ho
 
 	std::stringstream sstrAsm2;
 	sstrAsm2
-		<< "B #" << (int64_t)(hook_func_start_addr - do_execve_addr) << std::endl;
+		<< "B #" << (int64_t)(hook_func_start_addr - reg_param.do_execve_addr) << std::endl;
 	std::string strBytes2 = Arm64AsmToBytes(sstrAsm2.str());
 	if (!strBytes2.length()) {
 		return 0;
 	}
 
-	vec_out_patch_bytes_data.push_back({ strBytes2, do_execve_addr });
+	vec_out_patch_bytes_data.push_back({ strBytes2, reg_param.do_execve_addr });
 
 	hook_func_start_addr += nHookFuncSize;
 	std::cout << "#下一段HOOK函数起始可写位置：" << std::hex << hook_func_start_addr << std::endl << std::endl;
