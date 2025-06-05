@@ -1,8 +1,6 @@
 ﻿#include "patch_kernel_root.h"
 #include "analyze/base_func.h"
 #include "analyze/symbol_analyze.h"
-#include "analyze/Arm64_asm.h"
-
 #include "patch_do_execve.h"
 #include "patch_avc_denied.h"
 #include "patch_filldir64.h"
@@ -164,8 +162,10 @@ int main(int argc, char* argv[]) {
 	} else {
 		std::cout << "请输入ROOT密匙（48个字符的字符串，包含大小写和数字）：" << std::endl;
 		std::cin >> str_root_key;
+		std::cout << std::endl;
 	}
 
+	PatchBase patchBase(file_buf, sym, symbol_analyze);
 	PatchDoExecve patchDoExecve(file_buf, sym, symbol_analyze);
 	PatchAvcDenied patchAvcDenied(file_buf, sym, symbol_analyze);
 	PatchFilldir64 patchFilldir64(file_buf, sym, symbol_analyze);
@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
 	std::vector<size_t> v_hook_func_start_addr;
 	if (symbol_analyze.is_kernel_version_less("5.5.0")) {
 		first_hook_start_addr = 0x200;
-		next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr, v_cred, v_seccomp, vec_patch_bytes_data);
+		next_hook_func_addr = patchDoExecve.patch_do_execve(str_root_key, first_hook_start_addr + 4, v_cred, v_seccomp, vec_patch_bytes_data);
 		next_hook_func_addr = patchFilldir64.patch_filldir64(first_hook_start_addr, next_hook_func_addr, vec_patch_bytes_data);
 		next_hook_func_addr = patchAvcDenied.patch_avc_denied(next_hook_func_addr, v_cred, vec_patch_bytes_data);
 		next_hook_func_addr = patchFreezeTask.patch_freeze_task(next_hook_func_addr, v_cred, vec_patch_bytes_data);

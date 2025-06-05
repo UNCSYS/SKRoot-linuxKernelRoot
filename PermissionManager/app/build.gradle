@@ -16,7 +16,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-std=c++17'
-                abiFilters "arm64-v8a" //需要什么构架的so，就在这边添加即
+                abiFilters "arm64-v8a"
             }
         }
     }

@@ -7,12 +7,13 @@ class PatchBase
 {
 public:
 	PatchBase(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
-		const SymbolAnalyze& symbol_analyze);
+		const SymbolAnalyze& analyze_kernel);
 	~PatchBase();
+
 protected:
 	int get_cred_atomic_usage_len();
 	int get_cred_securebits_padding();
-	std::string get_cap_ability_max();
+	uint64_t get_cap_ability_max();
 	int get_cap_cnt();
 	const std::vector<char>& m_file_buf;
 	const KernelSymbolOffset& m_sym;

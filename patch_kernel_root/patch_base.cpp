@@ -1,5 +1,4 @@
 ﻿#include "patch_base.h"
-#include "analyze/Arm64_asm.h"
 PatchBase::PatchBase(const std::vector<char>& file_buf, const KernelSymbolOffset& sym,
 	const SymbolAnalyze& symbol_analyze) : m_file_buf(file_buf), m_sym(sym), m_symbol_analyze(symbol_analyze) {
 
@@ -24,16 +23,16 @@ int PatchBase::get_cred_securebits_padding() {
 	return 0;
 }
 
-std::string PatchBase::get_cap_ability_max() {
-	std::string cap;
+uint64_t PatchBase::get_cap_ability_max() {
+	uint64_t cap = 0x3FFFFFFFFF;
 	if (m_symbol_analyze.is_kernel_version_less("5.8.0")) {
-		cap = "0x3FFFFFFFFF";
+		cap = 0x3FFFFFFFFF;
 	}
 	else if (m_symbol_analyze.is_kernel_version_less("5.9.0")) {
-		cap = "0xFFFFFFFFFF";
+		cap = 0xFFFFFFFFFF;
 	}
 	else {
-		cap = "0x1FFFFFFFFFF";
+		cap = 0x1FFFFFFFFFF;
 	}
 	return cap;
 }
