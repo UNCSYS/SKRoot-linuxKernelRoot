@@ -21,6 +21,9 @@ add_library( # Sets the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
+		../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_command.cpp
+        ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_exec_process.cpp
+        ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_process_cmdline.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_process64_inject.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_ptrace_arm64_utils.cpp
         ../../../../../testRoot/jni/kernel_root_kit/kernel_root_kit_su_install_helper.cpp

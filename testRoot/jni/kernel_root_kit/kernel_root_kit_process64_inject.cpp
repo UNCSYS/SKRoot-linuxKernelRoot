@@ -1,4 +1,5 @@
-﻿#include <stdio.h>
+﻿#include "kernel_root_kit_process64_inject.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -15,10 +16,9 @@
 #include <sys/wait.h>
 #include <map>
 
-#include "kernel_root_kit_process64_inject.h"
+#include "kernel_root_kit_umbrella.h"
 #include "kernel_root_kit_ptrace_arm64_utils.h"
 #include "kernel_root_kit_maps_helper.h"
-#include "kernel_root_kit_command.h"
 #include "kernel_root_kit_elf64_symbol_parser.h"
 #include "kernel_root_kit_log.h"
 

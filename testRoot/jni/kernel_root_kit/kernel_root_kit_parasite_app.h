@@ -2,6 +2,7 @@
 #define _KERNEL_ROOT_KIT_PARASITE_APP_H_
 #include <iostream>
 #include <set>
+#include <map>
 namespace kernel_root {
 enum app_so_status {
     unknow = 0,

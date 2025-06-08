@@ -43,12 +43,12 @@ Java_com_linux_permissionmanager_MainActivity_testRoot(
     }
     err = 0;
     if(!wait_fork_child_process(finfo)) {
-        err = -1120001;
+        err = ERR_WAIT_FORK_CHILD;
     } else {
         if(!read_errcode_from_child(finfo, err)) {
-            err = -1120002;
+            err = ERR_READ_CHILD_ERRCODE;
         } else if(!read_string_from_child(finfo, result)) {
-            err = -1120003;
+            err = ERR_READ_CHILD_STRING;
         }
     }
     return env->NewStringUTF(result.c_str());

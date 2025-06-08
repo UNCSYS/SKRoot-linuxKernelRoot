@@ -1,6 +1,7 @@
 #ifndef _KERNEL_ROOT_KIT_FORK_HELPER_H_
 #define _KERNEL_ROOT_KIT_FORK_HELPER_H_
 #include <string.h>
+#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <memory>
@@ -10,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include "kernel_root_kit_err_def.h"
 
@@ -167,6 +169,21 @@ static bool read_int_from_child(const fork_pipe_info & finfo, int & n) {
 	}
 	return false;
 }
+
+static bool write_uint64_from_child(const fork_pipe_info & finfo, uint64_t n) {
+	if(write(finfo.fd_write_child, &n, sizeof(n))==sizeof(n)) {
+		return true;
+	}
+	return false;
+}
+
+static bool read_uint64_from_child(const fork_pipe_info & finfo, uint64_t & n) {
+	if(read(finfo.fd_read_child, (void*)&n, sizeof(n))==sizeof(n)) {
+		return true;
+	}
+	return false;
+}
+
 static bool write_set_int_from_child(const fork_pipe_info & finfo, const std::set<int> & s) {
 	size_t total_size = sizeof(int) * s.size();
 	std::vector<char> buffer(total_size);

@@ -1,8 +1,4 @@
 #include "kernel_root_kit_upx_helper.h"
-#include "kernel_root_kit_upx_data.h"
-#include "kernel_root_kit_exec_process.h"
-#include "kernel_root_kit_log.h"
-#include "../su/su_hide_path_utils.h"
 #include <string.h>
 #include <dirent.h>
 #include <time.h>
@@ -13,6 +9,12 @@
 #include <filesystem>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include "kernel_root_kit_umbrella.h"
+#include "kernel_root_kit_upx_data.h"
+#include "kernel_root_kit_log.h"
+#include "../su/su_hide_path_utils.h"
+
 namespace kernel_root {
 
 bool write_upx_exec(const char* target_path) {

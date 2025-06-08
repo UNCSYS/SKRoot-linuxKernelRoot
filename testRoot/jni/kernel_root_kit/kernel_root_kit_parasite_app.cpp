@@ -1,13 +1,13 @@
-#include "kernel_root_kit_log.h"
-#include "kernel_root_kit_command.h"
 #include "kernel_root_kit_parasite_app.h"
-#include "kernel_root_kit_process_cmdline_utils.h"
-#include "kernel_root_kit_maps_helper.h"
+
 #ifndef LIB_ROOT_SERVER_MODE
 #include "kernel_root_kit_lib_root_server_data.h"
 #endif
+#include "kernel_root_kit_umbrella.h"
 #include "kernel_root_kit_lib_su_env_data.h"
 #include "kernel_root_kit_parasite_patch_elf.h"
+#include "kernel_root_kit_log.h"
+#include "kernel_root_kit_maps_helper.h"
 #include "kernel_root_kit_upx_helper.h"
 #include "kernel_root_kit_random.h"
 #include "../lib_root_server/lib_root_server_inline.h"
@@ -18,6 +18,7 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <map>
 #include <filesystem>
 #include <random>
 #include <dirent.h>
